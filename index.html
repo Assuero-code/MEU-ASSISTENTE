@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assistente Pessoal Executivo</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#1e293b">
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-input: #334155;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --danger: #ef4444;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .status-badge {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      background-color: var(--border);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .status-badge.online {
+      background-color: rgba(16, 185, 129, 0.2);
+      color: var(--success);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+
+    .main-container {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      flex: 1;
+      height: calc(100vh - 60px);
+      overflow: hidden;
+    }
+
+    @media (max-width: 850px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        display: none;
+      }
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      background-color: var(--bg-card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .sidebar-section h3 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    .card-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .card-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+    }
+
+    .card-item strong {
+      display: block;
+      color: var(--text);
+    }
+
+    .card-item span {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    /* CHAT VIEW */
+    .chat-view {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background-color: var(--bg-main);
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .message {
+      max-width: 80%;
+      padding: 0.85rem 1.15rem;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .message.assistant {
+      align-self: flex-start;
+      background-color: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+
+    .message.user {
+      align-self: flex-end;
+      background-color: var(--primary);
+      color: white;
+    }
+
+    /* INPUT AND VOICE BAR */
+    .input-bar {
+      padding: 1rem 1.5rem;
+      background-color: var(--bg-card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .input-bar input {
+      flex: 1;
+      background-color: var(--bg-input);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      outline: none;
+      font-size: 0.95rem;
+    }
+
+    .input-bar input:focus {
+      border-color: var(--primary);
+    }
+
+    .btn {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: background-color 0.2s;
+    }
+
+    .btn:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background-color: var(--bg-input);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background-color: var(--border);
+    }
+
+    .btn-mic.recording {
+      background-color: var(--danger);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+
+    /* MODAL DE CONFIRMAÇÃO */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      max-width: 480px;
+      width: 90%;
+      padding: 1.5rem;
+    }
+
+    .modal-card h2 {
+      margin-bottom: 0.75rem;
+      font-size: 1.2rem;
+    }
+
+    .modal-card p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
+        <path d="M12 6v6l4 2"/>
+      </svg>
+      <span>Secretário Virtual</span>
+    </div>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <div id="backendStatus" class="status-badge">
+        <span class="status-dot"></span>
+        <span id="backendText">Conectando...</span>
+      </div>
+      <button id="authBtn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Conectar Google</button>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <!-- BARRA LATERAL COM INFORMAÇÕES DE ROTINA -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <h3>Compromissos de Hoje</h3>
+        <div id="calendarList" class="card-list">
+          <div class="card-item"><span>Carregando agenda...</span></div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <h3>Tarefas Pendentes</h3>
+        <div id="taskList" class="card-list">
+          <div class="card-item"><span>Carregando tarefas...</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ÁREA DE DIÁLOGO E ENTRADA DE COMANDOS -->
+    <main class="chat-view">
+      <div id="chatMessages" class="chat-messages">
+        <div class="message assistant">
+          Olá! Sou seu secretário virtual executivo. Como posso ajudar com sua agenda, tarefas ou e-mails hoje?
+        </div>
+      </div>
+
+      <div class="input-bar">
+        <button id="btnVoice" class="btn btn-secondary btn-mic" title="Gravar voz">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+          </svg>
+        </button>
+        <button id="btnStopVoice" class="btn btn-secondary" title="Parar fala do assistente">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="6" y="6" width="12" height="12"/>
+          </svg>
+        </button>
+        <input type="text" id="userInput" placeholder="Digite um comando (ex: 'Quais meus compromissos de hoje?')..." />
+        <button id="btnSend" class="btn">Enviar</button>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL DE CONFIRMAÇÃO PARA AÇÕES SENSÍVEIS (GOOGLE CALENDAR / E-MAILS) -->
+  <div id="confirmModal" class="modal-overlay">
+    <div class="modal-card">
+      <h2 id="modalTitle">Confirmação de Ação</h2>
+      <p id="modalDescription">Deseja realmente confirmar esta operação?</p>
+      <div class="modal-actions">
+        <button id="btnCancelAction" class="btn btn-secondary">Cancelar</button>
+        <button id="btnConfirmAction" class="btn">Confirmar Execução</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // ==========================================
+    // CONFIGURAÇÕES DO ASSISTENTE
+    // Substitua pela URL gerada no Cloudflare Worker
+    // ==========================================
+    const BACKEND_URL = "https://SEU_WORKER.workers.dev";
+    
+    // Estado do Aplicativo
+    let userId = localStorage.getItem('assistant_user_id') || null;
+    let pendingAction = null;
+    let conversationHistory = [];
+
+    // Elementos de UI
+    const chatMessages = document.getElementById('chatMessages');
+    const userInput = document.getElementById('userInput');
+    const btnSend = document.getElementById('btnSend');
+    const btnVoice = document.getElementById('btnVoice');
+    const btnStopVoice = document.getElementById('btnStopVoice');
+    const authBtn = document.getElementById('authBtn');
+    const backendStatus = document.getElementById('backendStatus');
+    const backendText = document.getElementById('backendText');
+    const confirmModal = document.getElementById('confirmModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalDescription = document.getElementById('modalDescription');
+    const btnConfirmAction = document.getElementById('btnConfirmAction');
+    const btnCancelAction = document.getElementById('btnCancelAction');
+
+    // ==========================================
+    // SÍNTESE E RECONHECIMENTO DE VOZ (Web Speech API)
+    // ==========================================
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let isRecording = false;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'pt-BR';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        isRecording = true;
+        btnVoice.classList.add('recording');
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        userInput.value = transcript;
+        sendMessage(transcript);
+      };
+
+      recognition.onerror = () => stopRecording();
+      recognition.onend = () => stopRecording();
+    }
+
+    function toggleRecording() {
+      if (!recognition) {
+        alert("Reconhecimento de voz não suportado neste navegador. Utilize texto.");
+        return;
+      }
+      if (isRecording) {
+        recognition.stop();
+      } else {
+        recognition.start();
+      }
+    }
+
+    function stopRecording() {
+      isRecording = false;
+      btnVoice.classList.remove('recording');
+    }
+
+    function speakText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Para falas anteriores
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'pt-BR';
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    btnStopVoice.addEventListener('click', () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    });
+
+    btnVoice.addEventListener('click', toggleRecording);
+
+    // ==========================================
+    // NAVEGAÇÃO DE CHAT E COMUNICAÇÃO COM O WORKER
+    // ==========================================
+    function appendMessage(role, text) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message ${role}`;
+      msgDiv.innerText = text;
+      chatMessages.appendChild(msgDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function sendMessage(text) {
+      const prompt = text || userInput.value.trim();
+      if (!prompt) return;
+
+      appendMessage('user', prompt);
+      userInput.value = '';
+
+      if (!userId) {
+        appendMessage('assistant', 'Aviso: você ainda não conectou sua conta Google. Algumas ferramentas de agenda e e-mail podem não responder.');
+      }
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-Id': userId || ''
+          },
+          body: JSON.stringify({
+            message: prompt,
+            history: conversationHistory
+          })
+        });
+
+        if (!response.ok) throw new Error('Falha na resposta do servidor.');
+
+        const data = await response.json();
+        
+        appendMessage('assistant', data.reply);
+        speakText(data.reply);
+
+        // Atualiza memória da conversa
+        conversationHistory.push({ role: 'user', content: prompt });
+        conversationHistory.push({ role: 'assistant', content: data.reply });
+
+        // Verifica se a IA solicitou uma confirmação de ação sensível
+        if (data.requiresFrontendConfirmation && data.pendingActionData) {
+          triggerConfirmationModal(data.pendingActionData);
+        }
+
+        refreshDashboardData();
+
+      } catch (err) {
+        appendMessage('assistant', `Erro: ${err.message}`);
+      }
+    }
+
+    btnSend.addEventListener('click', () => sendMessage());
+    userInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // ==========================================
+    // CONFIRMAÇÕES CRÍTICAS (SAFETY INTERACTION)
+    // ==========================================
+    function triggerConfirmationModal(actionData) {
+      pendingAction = actionData;
+      modalTitle.innerText = "Confirmar Agendamento";
+      modalDescription.innerText = `Deseja realmente marcar: "${actionData.details.summary}" em ${actionData.details.startDateTime}?`;
+      confirmModal.style.display = 'flex';
+    }
+
+    btnCancelAction.addEventListener('click', () => {
+      confirmModal.style.display = 'none';
+      pendingAction = null;
+      appendMessage('assistant', 'Operação cancelada pelo usuário.');
+    });
+
+    btnConfirmAction.addEventListener('click', async () => {
+      if (!pendingAction) return;
+      confirmModal.style.display = 'none';
+      appendMessage('assistant', 'Confirmando operação com o servidor...');
+
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/action/confirm`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-User-Id': userId
+          },
+          body: JSON.stringify(pendingAction)
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          appendMessage('assistant', '✅ Ação executada e gravada com sucesso!');
+          refreshDashboardData();
+        } else {
+          appendMessage('assistant', '❌ Falha ao executar ação solicitada.');
+        }
+      } catch (e) {
+        appendMessage('assistant', `Erro ao confirmar: ${e.message}`);
+      } finally {
+        pendingAction = null;
+      }
+    });
+
+    // ==========================================
+    // SINCRONIZAÇÃO DE DADOS (CALENDÁRIO E TAREFAS)
+    // ==========================================
+    async function refreshDashboardData() {
+      if (!userId) return;
+
+      // Buscar compromissos do dia
+      try {
+        const resCal = await fetch(`${BACKEND_URL}/api/calendar/today`, {
+          headers: { 'X-User-Id': userId }
+        });
+        if (resCal.ok) {
+          const events = await resCal.json();
+          const calContainer = document.getElementById('calendarList');
+          calContainer.innerHTML = '';
+          if (events.length === 0) {
+            calContainer.innerHTML = '<div class="card-item"><span>Nenhum compromisso hoje.</span></div>';
+          } else {
+            events.forEach(ev => {
+              const div = document.createElement('div');
+              div.className = 'card-item';
+              div.innerHTML = `<strong>${ev.summary}</strong><span>${new Date(ev.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>`;
+              calContainer.appendChild(div);
+            });
+          }
+        }
+      } catch (_) {}
+
+      // Buscar tarefas
+      try {
+        const resTasks = await fetch(`${BACKEND_URL}/api/tasks`, {
+          headers: { 'X-User-Id': userId }
+        });
+        if (resTasks.ok) {
+          const tasks = await resTasks.json();
+          const taskContainer = document.getElementById('taskList');
+          taskContainer.innerHTML = '';
+          if (tasks.length === 0) {
+            taskContainer.innerHTML = '<div class="card-item"><span>Sem pendências.</span></div>';
+          } else {
+            tasks.forEach(t => {
+              const div = document.createElement('div');
+              div.className = 'card-item';
+              div.innerHTML = `<strong>${t.title}</strong><span>Prioridade: ${t.priority}</span>`;
+              taskContainer.appendChild(div);
+            });
+          }
+        }
+      } catch (_) {}
+    }
+
+    // ==========================================
+    // AUTENTICAÇÃO E INICIALIZAÇÃO
+    // ==========================================
+    function checkBackendConnection() {
+      fetch(`${BACKEND_URL}/api/tasks`, { headers: { 'X-User-Id': 'ping' } })
+        .then(() => {
+          backendStatus.classList.add('online');
+          backendText.innerText = "Online";
+        })
+        .catch(() => {
+          backendText.innerText = "Worker Offline";
+        });
+    }
+
+    authBtn.addEventListener('click', () => {
+      // Configurar a URL de consentimento OAuth do Google
+      const CLIENT_ID = "SEU_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+      const REDIRECT_URI = window.location.origin + window.location.pathname;
+      const SCOPE = encodeURIComponent("https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.modify openid email profile");
+      
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${SCOPE}&access_type=offline&prompt=consent`;
+      
+      window.location.href = authUrl;
+    });
+
+    // Tratar retorno do código OAuth caso presente na URL
+    async function handleAuthRedirect() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (code) {
+        appendMessage('assistant', 'Autenticando com o Google...');
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+          });
+          const data = await res.json();
+          if (data.userId) {
+            userId = data.userId;
+            localStorage.setItem('assistant_user_id', userId);
+            window.history.replaceState({}, document.title, window.location.pathname);
+            appendMessage('assistant', `Conectado com sucesso como ${data.name || data.email}!`);
+            refreshDashboardData();
+          }
+        } catch (e) {
+          appendMessage('assistant', `Erro na autenticação: ${e.message}`);
+        }
+      }
+    }
+
+    // Inicialização da página
+    handleAuthRedirect();
+    checkBackendConnection();
+    if (userId) {
+      refreshDashboardData();
+    }
+  </script>
+</body>
+</html>
