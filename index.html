@@ -623,7 +623,7 @@
       const REDIRECT_URI = window.location.origin + window.location.pathname;
       const SCOPE = encodeURIComponent("https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.modify openid email profile");
       
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${SCOPE}&access_type=offline&prompt=consent`;
+     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${SCOPE}&access_type=offline&prompt=select_account%20consent`;
       
       window.location.href = authUrl;
     });
