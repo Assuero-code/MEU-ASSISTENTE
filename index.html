@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Assistente Pessoal Executivo</title>
-  <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#1e293b">
   <style>
     :root {
@@ -14,6 +13,7 @@
       --primary: #3b82f6;
       --primary-hover: #2563eb;
       --danger: #ef4444;
+      --danger-hover: #dc2626;
       --success: #10b981;
       --warning: #f59e0b;
       --text: #f8fafc;
@@ -52,6 +52,12 @@
       gap: 0.5rem;
       font-size: 1.1rem;
       font-weight: 700;
+    }
+
+    .user-info {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
     }
 
     .status-badge {
@@ -175,7 +181,7 @@
       color: white;
     }
 
-    /* INPUT AND VOICE BAR */
+    /* INPUT BAR */
     .input-bar {
       padding: 1rem 1.5rem;
       background-color: var(--bg-card);
@@ -228,6 +234,16 @@
       background-color: var(--border);
     }
 
+    .btn-danger {
+      background-color: var(--danger);
+      color: white;
+      border: none;
+    }
+
+    .btn-danger:hover {
+      background-color: var(--danger-hover);
+    }
+
     .btn-mic.recording {
       background-color: var(--danger);
       animation: pulse 1.5s infinite;
@@ -239,7 +255,7 @@
       100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
     }
 
-    /* MODAL DE CONFIRMAÇÃO */
+    /* MODAL */
     .modal-overlay {
       position: fixed;
       top: 0;
@@ -290,7 +306,7 @@
       </svg>
       <span>Secretário Virtual</span>
     </div>
-    <div style="display: flex; gap: 0.5rem; align-items: center;">
+    <div class="user-info">
       <div id="backendStatus" class="status-badge">
         <span class="status-dot"></span>
         <span id="backendText">Conectando...</span>
@@ -300,28 +316,26 @@
   </header>
 
   <div class="main-container">
-    <!-- BARRA LATERAL COM INFORMAÇÕES DE ROTINA -->
     <aside class="sidebar">
       <div class="sidebar-section">
         <h3>Compromissos de Hoje</h3>
         <div id="calendarList" class="card-list">
-          <div class="card-item"><span>Carregando agenda...</span></div>
+          <div class="card-item"><span>Nenhum compromisso carregado.</span></div>
         </div>
       </div>
 
       <div class="sidebar-section">
         <h3>Tarefas Pendentes</h3>
         <div id="taskList" class="card-list">
-          <div class="card-item"><span>Carregando tarefas...</span></div>
+          <div class="card-item"><span>Nenhuma tarefa registrada.</span></div>
         </div>
       </div>
     </aside>
 
-    <!-- ÁREA DE DIÁLOGO E ENTRADA DE COMANDOS -->
     <main class="chat-view">
       <div id="chatMessages" class="chat-messages">
         <div class="message assistant">
-          Olá! Sou seu secretário virtual executivo. Como posso ajudar com sua agenda, tarefas ou e-mails hoje?
+          Olá! Sou seu assistente pessoal executivo. Posso organizar seus compromissos no Google Agenda, checar seus e-mails do Gmail e agendar tarefas.
         </div>
       </div>
 
@@ -332,42 +346,42 @@
             <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
           </svg>
         </button>
-        <button id="btnStopVoice" class="btn btn-secondary" title="Parar fala do assistente">
+        <button id="btnStopVoice" class="btn btn-secondary" title="Interromper fala">
           <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <rect x="6" y="6" width="12" height="12"/>
           </svg>
         </button>
-        <input type="text" id="userInput" placeholder="Digite um comando (ex: 'Quais meus compromissos de hoje?')..." />
+        <input type="text" id="userInput" placeholder="Digite um comando ou fale comigo..." />
         <button id="btnSend" class="btn">Enviar</button>
       </div>
     </main>
   </div>
 
-  <!-- MODAL DE CONFIRMAÇÃO PARA AÇÕES SENSÍVEIS (GOOGLE CALENDAR / E-MAILS) -->
   <div id="confirmModal" class="modal-overlay">
     <div class="modal-card">
       <h2 id="modalTitle">Confirmação de Ação</h2>
       <p id="modalDescription">Deseja realmente confirmar esta operação?</p>
       <div class="modal-actions">
         <button id="btnCancelAction" class="btn btn-secondary">Cancelar</button>
-        <button id="btnConfirmAction" class="btn">Confirmar Execução</button>
+        <button id="btnConfirmAction" class="btn">Confirmar</button>
       </div>
     </div>
   </div>
 
   <script type="module">
-    // ==========================================
-    // CONFIGURAÇÕES DO ASSISTENTE
-    // Substitua pela URL gerada no Cloudflare Worker
-    // ==========================================
-    const BACKEND_URL = "https://SEU_WORKER.workers.dev";
-    
-    // Estado do Aplicativo
+    // =========================================================================
+    // CONFIGURAÇÕES - INSIRA SUAS CREDENCIAIS AQUI
+    // =========================================================================
+    const BACKEND_URL = "https://SEU_WORKER.workers.dev"; // Cole a URL do seu Cloudflare Worker
+    const CLIENT_ID = "SEU_GOOGLE_CLIENT_ID.apps.googleusercontent.com"; // Cole seu Client ID aqui
+
+    // Estado da aplicação
     let userId = localStorage.getItem('assistant_user_id') || null;
+    let userName = localStorage.getItem('assistant_user_name') || null;
     let pendingAction = null;
     let conversationHistory = [];
 
-    // Elementos de UI
+    // Elementos da Interface
     const chatMessages = document.getElementById('chatMessages');
     const userInput = document.getElementById('userInput');
     const btnSend = document.getElementById('btnSend');
@@ -382,9 +396,110 @@
     const btnConfirmAction = document.getElementById('btnConfirmAction');
     const btnCancelAction = document.getElementById('btnCancelAction');
 
-    // ==========================================
-    // SÍNTESE E RECONHECIMENTO DE VOZ (Web Speech API)
-    // ==========================================
+    // =========================================================================
+    // CONTROLE DE AUTENTICAÇÃO (OAUTH 2.0 GOOGLE)
+    // =========================================================================
+    function updateAuthButtonState() {
+      if (userId) {
+        authBtn.innerText = `Desconectar (${userName || 'Google'})`;
+        authBtn.className = "btn btn-danger";
+        authBtn.style.padding = "0.4rem 0.8rem";
+        authBtn.style.fontSize = "0.8rem";
+      } else {
+        authBtn.innerText = "Conectar Google";
+        authBtn.className = "btn btn-secondary";
+        authBtn.style.padding = "0.4rem 0.8rem";
+        authBtn.style.fontSize = "0.8rem";
+      }
+    }
+
+    authBtn.addEventListener('click', () => {
+      // Se já estiver logado, o clique funciona como LOGOUT
+      if (userId) {
+        if (confirm("Deseja realmente desconectar da sua conta Google e trocar de usuário?")) {
+          localStorage.removeItem('assistant_user_id');
+          localStorage.removeItem('assistant_user_name');
+          userId = null;
+          userName = null;
+          updateAuthButtonState();
+          appendMessage('assistant', 'Conta desconectada. Você pode conectar outra conta a qualquer momento.');
+          document.getElementById('calendarList').innerHTML = '<div class="card-item"><span>Nenhum compromisso carregado.</span></div>';
+          document.getElementById('taskList').innerHTML = '<div class="card-item"><span>Nenhuma tarefa registrada.</span></div>';
+        }
+        return;
+      }
+
+      // Se não estiver logado, redireciona ao Google FORÇANDO A ESCOLHA DE CONTA
+      const currentUrlClean = window.location.origin + window.location.pathname;
+      const scopes = [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/gmail.modify",
+        "openid",
+        "email",
+        "profile"
+      ].join(" ");
+
+      // prompt=select_account força a tela de seleção de contas do Google
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${encodeURIComponent(CLIENT_ID)}` +
+        `&redirect_uri=${encodeURIComponent(currentUrlClean)}` +
+        `&response_type=code` +
+        `&scope=${encodeURIComponent(scopes)}` +
+        `&access_type=offline` +
+        `&prompt=select_account%20consent`;
+
+      window.location.href = authUrl;
+    });
+
+    async function handleAuthRedirect() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const error = params.get('error');
+
+      if (error) {
+        appendMessage('assistant', `Aviso: Permissão não concedida (${error}).`);
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+
+      if (code) {
+        appendMessage('assistant', 'Validando autorização com o servidor seguro...');
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+          });
+
+          if (!res.ok) {
+            const errDetail = await res.text();
+            throw new Error(errDetail);
+          }
+
+          const data = await res.json();
+          if (data.userId) {
+            userId = data.userId;
+            userName = data.name || data.email;
+            localStorage.setItem('assistant_user_id', userId);
+            localStorage.setItem('assistant_user_name', userName);
+
+            // Limpa a URL removendo o código de autorização
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            updateAuthButtonState();
+            appendMessage('assistant', `Conectado com sucesso com a conta: ${userName}!`);
+            refreshDashboardData();
+          }
+        } catch (e) {
+          appendMessage('assistant', `Falha ao concluir autenticação: ${e.message}`);
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      }
+    }
+
+    // =========================================================================
+    // RECONHECIMENTO E SÍNTESE DE VOZ
+    // =========================================================================
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
     let isRecording = false;
@@ -412,7 +527,7 @@
 
     function toggleRecording() {
       if (!recognition) {
-        alert("Reconhecimento de voz não suportado neste navegador. Utilize texto.");
+        alert("Reconhecimento de voz não suportado neste navegador.");
         return;
       }
       if (isRecording) {
@@ -429,7 +544,7 @@
 
     function speakText(text) {
       if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel(); // Para falas anteriores
+        window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'pt-BR';
         window.speechSynthesis.speak(utterance);
@@ -444,9 +559,9 @@
 
     btnVoice.addEventListener('click', toggleRecording);
 
-    // ==========================================
-    // NAVEGAÇÃO DE CHAT E COMUNICAÇÃO COM O WORKER
-    // ==========================================
+    // =========================================================================
+    // MENSAGENS E CHAT
+    // =========================================================================
     function appendMessage(role, text) {
       const msgDiv = document.createElement('div');
       msgDiv.className = `message ${role}`;
@@ -462,10 +577,6 @@
       appendMessage('user', prompt);
       userInput.value = '';
 
-      if (!userId) {
-        appendMessage('assistant', 'Aviso: você ainda não conectou sua conta Google. Algumas ferramentas de agenda e e-mail podem não responder.');
-      }
-
       try {
         const response = await fetch(`${BACKEND_URL}/api/chat`, {
           method: 'POST',
@@ -479,18 +590,16 @@
           })
         });
 
-        if (!response.ok) throw new Error('Falha na resposta do servidor.');
+        if (!response.ok) throw new Error('Não foi possível obter resposta do servidor.');
 
         const data = await response.json();
         
         appendMessage('assistant', data.reply);
         speakText(data.reply);
 
-        // Atualiza memória da conversa
         conversationHistory.push({ role: 'user', content: prompt });
         conversationHistory.push({ role: 'assistant', content: data.reply });
 
-        // Verifica se a IA solicitou uma confirmação de ação sensível
         if (data.requiresFrontendConfirmation && data.pendingActionData) {
           triggerConfirmationModal(data.pendingActionData);
         }
@@ -507,9 +616,9 @@
       if (e.key === 'Enter') sendMessage();
     });
 
-    // ==========================================
-    // CONFIRMAÇÕES CRÍTICAS (SAFETY INTERACTION)
-    // ==========================================
+    // =========================================================================
+    // CONFIRMAÇÃO DE AÇÕES SENSÍVEIS
+    // =========================================================================
     function triggerConfirmationModal(actionData) {
       pendingAction = actionData;
       modalTitle.innerText = "Confirmar Agendamento";
@@ -526,7 +635,7 @@
     btnConfirmAction.addEventListener('click', async () => {
       if (!pendingAction) return;
       confirmModal.style.display = 'none';
-      appendMessage('assistant', 'Confirmando operação com o servidor...');
+      appendMessage('assistant', 'Confirmando operação com o Google...');
 
       try {
         const res = await fetch(`${BACKEND_URL}/api/action/confirm`, {
@@ -540,25 +649,24 @@
 
         const result = await res.json();
         if (result.success) {
-          appendMessage('assistant', '✅ Ação executada e gravada com sucesso!');
+          appendMessage('assistant', '✅ Ação concluída e registrada com sucesso!');
           refreshDashboardData();
         } else {
-          appendMessage('assistant', '❌ Falha ao executar ação solicitada.');
+          appendMessage('assistant', '❌ Ocorreu uma falha ao tentar executar a ação.');
         }
       } catch (e) {
-        appendMessage('assistant', `Erro ao confirmar: ${e.message}`);
+        appendMessage('assistant', `Erro: ${e.message}`);
       } finally {
         pendingAction = null;
       }
     });
 
-    // ==========================================
-    // SINCRONIZAÇÃO DE DADOS (CALENDÁRIO E TAREFAS)
-    // ==========================================
+    // =========================================================================
+    // DADOS DO DASHBOARD
+    // =========================================================================
     async function refreshDashboardData() {
       if (!userId) return;
 
-      // Buscar compromissos do dia
       try {
         const resCal = await fetch(`${BACKEND_URL}/api/calendar/today`, {
           headers: { 'X-User-Id': userId }
@@ -580,7 +688,6 @@
         }
       } catch (_) {}
 
-      // Buscar tarefas
       try {
         const resTasks = await fetch(`${BACKEND_URL}/api/tasks`, {
           headers: { 'X-User-Id': userId }
@@ -603,9 +710,6 @@
       } catch (_) {}
     }
 
-    // ==========================================
-    // AUTENTICAÇÃO E INICIALIZAÇÃO
-    // ==========================================
     function checkBackendConnection() {
       fetch(`${BACKEND_URL}/api/tasks`, { headers: { 'X-User-Id': 'ping' } })
         .then(() => {
@@ -617,44 +721,8 @@
         });
     }
 
-    authBtn.addEventListener('click', () => {
-      // Configurar a URL de consentimento OAuth do Google
-      const CLIENT_ID = "104829182910-xyz123abc456.apps.googleusercontent.com";
-      const REDIRECT_URI = window.location.origin + window.location.pathname;
-      const SCOPE = encodeURIComponent("https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.modify openid email profile");
-      
-     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=${SCOPE}&access_type=offline&prompt=select_account%20consent`;
-      
-      window.location.href = authUrl;
-    });
-
-    // Tratar retorno do código OAuth caso presente na URL
-    async function handleAuthRedirect() {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
-      if (code) {
-        appendMessage('assistant', 'Autenticando com o Google...');
-        try {
-          const res = await fetch(`${BACKEND_URL}/api/auth/google`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code })
-          });
-          const data = await res.json();
-          if (data.userId) {
-            userId = data.userId;
-            localStorage.setItem('assistant_user_id', userId);
-            window.history.replaceState({}, document.title, window.location.pathname);
-            appendMessage('assistant', `Conectado com sucesso como ${data.name || data.email}!`);
-            refreshDashboardData();
-          }
-        } catch (e) {
-          appendMessage('assistant', `Erro na autenticação: ${e.message}`);
-        }
-      }
-    }
-
-    // Inicialização da página
+    // Inicialização
+    updateAuthButtonState();
     handleAuthRedirect();
     checkBackendConnection();
     if (userId) {
