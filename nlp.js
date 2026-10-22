@@ -1,13 +1,12 @@
-// nlp.js - Processamento de Linguagem Natural e Validação de Intenções
+// nlp.js - Processador de Linguagem Natural com Suporte a IA Remota (Groq / OpenAI / Claude)
 const NLPParser = {
-  // Converte texto em representação de data/hora precisa em pt-BR
+  // Parser determinístico local (usado para comandos rápidos de agenda e fallback offline)
   parseDateTime(text, baseDate = new Date()) {
     const lower = text.toLowerCase();
     const target = new Date(baseDate.getTime());
     let dateFound = false;
     let timeFound = false;
 
-    // Reconhecimento de Dias Relativos
     if (lower.includes('hoje')) {
       dateFound = true;
     } else if (lower.includes('depois de amanhã') || lower.includes('depois de amanha')) {
@@ -17,20 +16,19 @@ const NLPParser = {
       target.setDate(target.getDate() + 1);
       dateFound = true;
     } else {
-      // Dia da semana: ex: "na próxima sexta", "segunda-feira"
-      const weekdays = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+      const weekdays = ['domingo', 'segunda', 'terça', 'terca', 'quarta', 'quinta', 'sexta', 'sábado', 'sabado'];
       for (let i = 0; i < weekdays.length; i++) {
         if (lower.includes(weekdays[i])) {
+          const targetDay = i > 6 ? (i === 7 ? 2 : 6) : i;
           const currentDay = target.getDay();
-          let diff = i - currentDay;
-          if (diff <= 0) diff += 7; // Próximo dia
+          let diff = targetDay - currentDay;
+          if (diff <= 0) diff += 7;
           target.setDate(target.getDate() + diff);
           dateFound = true;
           break;
         }
       }
 
-      // Padrão numérico: dia 15, dia 10 de outubro, 25/12
       const dateMatch = lower.match(/(?:dia\s+)?(\d{1,2})(?:\/|\s+de\s+)(\d{1,2}|janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)?/i);
       if (dateMatch) {
         const day = parseInt(dateMatch[1], 10);
@@ -54,7 +52,6 @@ const NLPParser = {
       }
     }
 
-    // Reconhecimento de Horário: "às 14h", "às 14:30", "15 horas", "9h da manhã"
     const timeMatch = lower.match(/(?:às|as|\s|^)(\d{1,2})(?:[h:](\d{2})?|(\s*horas?))/i);
     if (timeMatch) {
       let hours = parseInt(timeMatch[1], 10);
@@ -65,7 +62,6 @@ const NLPParser = {
       target.setHours(hours, minutes, 0, 0);
       timeFound = true;
     } else {
-      // Se não especificou hora, define 09:00 padrão
       target.setHours(9, 0, 0, 0);
     }
 
@@ -76,8 +72,8 @@ const NLPParser = {
     };
   },
 
-  // Identifica intenção estruturada a partir do comando
-  interpret(input, existingEvents = [], existingTasks = []) {
+  // Intérprete determinístico inicial
+  interpretLocal(input, existingEvents = []) {
     const text = input.trim();
     const lower = text.toLowerCase();
 
@@ -91,7 +87,6 @@ const NLPParser = {
       const dt = this.parseDateTime(lower);
       const queryDay = dt.date.toISOString().slice(0, 10);
       const isTomorrow = lower.includes('amanhã') || lower.includes('amanha');
-      
       return {
         intent: 'QUERY_AGENDA',
         targetDate: queryDay,
@@ -105,7 +100,7 @@ const NLPParser = {
       return { intent: 'QUERY_TASKS', raw: text };
     }
 
-    // 3. Cancelamento ou Exclusão
+    // 3. Cancelamento
     if (lower.startsWith('cancele') || lower.startsWith('cancelar') || lower.startsWith('exclua') || lower.startsWith('remover')) {
       return {
         intent: 'CANCEL_EVENT',
@@ -114,7 +109,7 @@ const NLPParser = {
       };
     }
 
-    // 4. Criação de Alarme Explícito
+    // 4. Alarme
     if (lower.startsWith('alarme') || lower.includes('criar alarme') || lower.includes('me acorde')) {
       const timeParsed = this.parseDateTime(lower);
       const hours = String(timeParsed.date.getHours()).padStart(2, '0');
@@ -127,17 +122,13 @@ const NLPParser = {
       };
     }
 
-    // 5. Criação de Tarefa
+    // 5. Tarefa
     if (lower.startsWith('tarefa:') || lower.startsWith('lembre-me de') || lower.startsWith('criar tarefa')) {
       const title = text.replace(/^(tarefa:|lembre-me de|criar tarefa)/i, '').trim();
-      return {
-        intent: 'CREATE_TASK',
-        title: title || 'Nova Tarefa',
-        raw: text
-      };
+      return { intent: 'CREATE_TASK', title: title || 'Nova Tarefa', raw: text };
     }
 
-    // 6. Criação de Compromisso / Reunião
+    // 6. Evento / Compromisso
     if (
       lower.startsWith('marque') || 
       lower.startsWith('agende') || 
@@ -147,11 +138,9 @@ const NLPParser = {
       lower.includes('compromisso')
     ) {
       const parsed = this.parseDateTime(lower);
-      
-      // Limpeza de título
       let cleanTitle = text
-        .replace(/(marque|agende|marcar|agendar|uma|um|novo|nova|compromisso|reunião|consulta)\s*/gi, '')
-        .replace(/(amanhã|amanha|hoje|segunda|terça|quarta|quinta|sexta|sábado|domingo)/gi, '')
+        .replace(/(marque|agende|marcar|agendar|uma|um|novo|nova|compromisso|reunião|reuniao|consulta)\s*/gi, '')
+        .replace(/(amanhã|amanha|hoje|segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo)/gi, '')
         .replace(/às\s+\d{1,2}(?::\d{2}|h)?/gi, '')
         .replace(/no dia\s+\d{1,2}(?:\/\d{1,2})?/gi, '')
         .trim();
@@ -160,17 +149,14 @@ const NLPParser = {
         cleanTitle = lower.includes('consulta') ? 'Consulta Médica' : 'Reunião Importante';
       }
 
-      // Alerta prévio (ex: "me avise 30 minutos antes")
       let reminderMinutes = 15;
       if (lower.includes('30 minutos antes')) reminderMinutes = 30;
       if (lower.includes('1 hora antes') || lower.includes('uma hora antes')) reminderMinutes = 60;
       if (lower.includes('10 minutos antes')) reminderMinutes = 10;
       if (lower.includes('no horário') || lower.includes('na hora')) reminderMinutes = 0;
 
-      // Cálculo de término (1 hora por padrão)
       const end = new Date(parsed.date.getTime() + 60 * 60 * 1000);
 
-      // Verificação de Conflitos
       const conflict = existingEvents.find(e => {
         const eStart = new Date(e.start).getTime();
         const eEnd = new Date(e.end).getTime();
@@ -191,11 +177,73 @@ const NLPParser = {
       };
     }
 
-    // 7. Conversação Geral / Explicações
-    return {
-      intent: 'GENERAL_CHAT',
-      query: text
-    };
+    return null; // Não é comando imediato de sistema
+  },
+
+  // Chamada à API de IA Remota (Groq / OpenAI / etc.)
+  async askAI(prompt, conversationHistory = []) {
+    const settings = StorageDB.getSettings();
+    const endpoint = settings.aiEndpoint?.trim();
+    const apiKey = settings.aiApiKey?.trim();
+
+    if (!endpoint || !apiKey) {
+      return {
+        success: false,
+        message: 'A Inteligência Artificial remota não está configurada. Vá até "⚙️ Ajustes" e informe o Endpoint e a Chave de API.'
+      };
+    }
+
+    // Detecta o modelo baseado no endpoint
+    let modelName = 'llama-3.3-70b-versatile'; // Padrão de alta velocidade da Groq
+    if (endpoint.includes('openai.com')) {
+      modelName = 'gpt-3.5-turbo';
+    }
+
+    const systemPrompt = `Você é o "Meu Assistente", um assistente pessoal digital prestativo, educado, ágil e inteligente. 
+Responda em português brasileiro com clareza, empatia e objetividade. 
+Ajude o usuário com explicações, tarefas, organização pessoal, ideias e dúvidas do dia a dia.
+A data de hoje é: ${new Date().toLocaleDateString('pt-BR')} (${new Date().toLocaleTimeString('pt-BR')}).`;
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...conversationHistory.slice(-6), // Mantém histórico recente
+      { role: 'user', content: prompt }
+    ];
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: modelName,
+          messages: messages,
+          temperature: 0.7,
+          max_tokens: 600
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `Erro HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const reply = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : 'Não foi possível obter resposta do assistente.';
+
+      return {
+        success: true,
+        message: reply.trim()
+      };
+    } catch (err) {
+      console.error('Erro na chamada da IA:', err);
+      return {
+        success: false,
+        message: `Falha ao conectar com a IA: ${err.message}. Verifique a chave de API e a conexão em Ajustes.`
+      };
+    }
   }
 };
 
