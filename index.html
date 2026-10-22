@@ -19,6 +19,7 @@
     <nav class="nav-menu">
       <button class="nav-item active" data-view="chat">💬 Conversa</button>
       <button class="nav-item" data-view="meu-dia">☀️ Meu Dia</button>
+      <button class="nav-item" data-view="agenda">📒 Agenda</button>
       <button class="nav-item" data-view="calendario">📅 Calendário</button>
       <button class="nav-item" data-view="tarefas">✅ Tarefas</button>
       <button class="nav-item" data-view="alarmes">⏰ Alarmes</button>
@@ -71,7 +72,26 @@
       </div>
     </section>
 
-    <!-- 3. Calendário -->
+    <!-- 3. Agenda Completa (NOVO) -->
+    <section id="view-agenda" class="view-section">
+      <div style="max-width: 900px; margin: 0 auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
+          <h2>Minha Agenda Completa</h2>
+          <button class="btn" id="btn-agenda-novo-evento">+ Novo Compromisso</button>
+        </div>
+        <div style="display:flex; gap:0.5rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+          <input type="text" id="agenda-search" placeholder="🔍 Buscar compromisso..." style="flex:1; min-width:200px; padding:0.6rem; border-radius:6px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text-main);">
+          <select id="agenda-filter-status" style="padding:0.6rem; border-radius:6px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text-main);">
+            <option value="all">Todos os status</option>
+            <option value="confirmed" selected>Ativos / Confirmados</option>
+            <option value="cancelled">Cancelados</option>
+          </select>
+        </div>
+        <div id="agenda-list" class="card-grid"></div>
+      </div>
+    </section>
+
+    <!-- 4. Calendário -->
     <section id="view-calendario" class="view-section">
       <div class="calendar-controls">
         <div>
@@ -85,7 +105,7 @@
       <div class="calendar-grid" id="calendar-grid"></div>
     </section>
 
-    <!-- 4. Tarefas -->
+    <!-- 5. Tarefas -->
     <section id="view-tarefas" class="view-section">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
         <h2>Minhas Tarefas</h2>
@@ -94,7 +114,7 @@
       <div id="tasks-list" class="card-grid"></div>
     </section>
 
-    <!-- 5. Alarmes -->
+    <!-- 6. Alarmes -->
     <section id="view-alarmes" class="view-section">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
         <h2>Alarmes Ativos</h2>
@@ -103,7 +123,7 @@
       <div id="alarms-list" class="card-grid"></div>
     </section>
 
-    <!-- 6. Ajustes -->
+    <!-- 7. Ajustes -->
     <section id="view-config" class="view-section">
       <div style="max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem;">
         <h2>Configurações do Sistema</h2>
@@ -149,6 +169,24 @@
           <button type="submit" class="btn" id="modal-btn-save">Salvar</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal de Detalhes / Visualização do Evento (NOVO) -->
+  <div class="modal-backdrop" id="modal-detail">
+    <div class="modal-box">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <h3 id="detail-title" style="margin-bottom:0.5rem; color:var(--accent);">Detalhes do Compromisso</h3>
+        <span id="detail-status" style="font-size:0.8rem; padding:2px 8px; border-radius:12px; background:var(--bg-tertiary);">Confirmado</span>
+      </div>
+      <div id="detail-body" style="margin-top:1rem; display:flex; flex-direction:column; gap:0.75rem; font-size:0.95rem; line-height:1.5;"></div>
+      <div style="display:flex; justify-content:space-between; margin-top:1.5rem; flex-wrap:wrap; gap:0.5rem;">
+        <button class="btn btn-danger" id="btn-detail-delete">Excluir</button>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-secondary" id="btn-detail-edit">Editar</button>
+          <button class="btn btn-secondary" id="btn-detail-close">Fechar</button>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -1,6 +1,5 @@
-// app.js - Orquestrador Central da Aplicação
+// app.js - Orquestrador Central da Aplicação com Edição, Visualização e Agenda
 document.addEventListener('DOMContentLoaded', () => {
-  // Inicialização de Estado
   let currentDate = new Date();
   let currentMonth = currentDate.getMonth();
   let currentYear = currentDate.getFullYear();
@@ -23,7 +22,22 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnMic = document.getElementById('btn-mic');
   const pushBadge = document.getElementById('push-status-badge');
 
-  // Atualização do Badge de Permissão
+  // Modais
+  const modalForm = document.getElementById('modal-form');
+  const modalFields = document.getElementById('modal-fields');
+  const modalTitle = document.getElementById('modal-title');
+  let currentModalAction = null;
+  let editingId = null;
+
+  const modalDetail = document.getElementById('modal-detail');
+  const detailTitle = document.getElementById('detail-title');
+  const detailStatus = document.getElementById('detail-status');
+  const detailBody = document.getElementById('detail-body');
+  const btnDetailClose = document.getElementById('btn-detail-close');
+  const btnDetailEdit = document.getElementById('btn-detail-edit');
+  const btnDetailDelete = document.getElementById('btn-detail-delete');
+  let selectedEvent = null;
+
   function updateNotifBadge() {
     if (!('Notification' in window)) {
       pushBadge.textContent = 'Notificações não suportadas';
@@ -42,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   updateNotifBadge();
 
-  // Navegação de Telas
+  // Navegação
   function switchView(target) {
     views.forEach(v => v.classList.remove('active'));
     navItems.forEach(n => n.classList.remove('active'));
@@ -56,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const titles = {
       'chat': 'Conversa com Assistente',
       'meu-dia': 'Visão Geral — Meu Dia',
+      'agenda': 'Minha Agenda de Compromissos',
       'calendario': 'Calendário de Compromissos',
       'tarefas': 'Gestão de Tarefas',
       'alarmes': 'Alarmes Ativos',
@@ -65,6 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (target === 'calendario') renderCalendar();
     if (target === 'meu-dia') renderMeuDia();
+    if (target === 'agenda') renderAgenda();
     if (target === 'tarefas') renderTasks();
     if (target === 'alarmes') renderAlarms();
   }
@@ -91,11 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     btnMic.addEventListener('click', () => {
-      try {
-        speechRec.start();
-      } catch {
-        speechRec.stop();
-      }
+      try { speechRec.start(); } catch { speechRec.stop(); }
     });
   } else {
     btnMic.style.display = 'none';
@@ -111,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.speechSynthesis.speak(utter);
   }
 
-  // --- ÁREA DE CHAT & PROCESSAMENTO DE COMANDOS ---
+  // --- ÁREA DE CHAT ---
   function appendMessage(sender, text) {
     const msg = document.createElement('div');
     msg.className = `msg msg-${sender}`;
@@ -136,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
           appendMessage('assistant', `Atenção: A data informada (${action.startDate.toLocaleDateString('pt-BR')}) já passou. Deseja agendar mesmo assim? Verifique no calendário.`);
         }
         if (action.conflict) {
-          appendMessage('assistant', `Aviso de Conflito: Você já tem o evento "${action.conflict.title}" marcado próximo a esse horário!`);
+          appendMessage('assistant', `Aviso de Conflito: Você já tem o compromisso "${action.conflict.title}" marcado nesse período!`);
         }
 
         const newEvt = StorageDB.saveEvent({
@@ -145,11 +157,12 @@ document.addEventListener('DOMContentLoaded', () => {
           end: action.endDate.toISOString(),
           category: 'geral',
           reminderMinutes: action.reminderMinutes,
+          description: `Criado via comando: "${action.raw}"`,
           status: 'confirmed'
         });
 
         AudioEngine.beepSuccess();
-        const resp = `Agendado com sucesso: "${newEvt.title}" para ${new Date(newEvt.start).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} com lembrete ${action.reminderMinutes} minutos antes.`;
+        const resp = `Agendado: "${newEvt.title}" para ${new Date(newEvt.start).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} com lembrete ${action.reminderMinutes} min antes.`;
         appendMessage('assistant', resp);
         speak(resp);
         break;
@@ -186,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const matches = events.filter(e => e.start.startsWith(action.targetDate) && e.status !== 'cancelled');
         let resp = '';
         if (matches.length === 0) {
-          resp = action.isTomorrow ? 'Você não tem compromissos marcados para amanhã.' : 'Não há compromissos marcados para esta data.';
+          resp = action.isTomorrow ? 'Você não tem compromissos amanhã.' : 'Não há compromissos para esta data.';
         } else {
           resp = `Você tem ${matches.length} compromisso(s): ` + matches.map(m => `${m.title} às ${new Date(m.start).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`).join(', ');
         }
@@ -197,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       case 'QUERY_TASKS': {
         const pend = tasks.filter(t => t.status === 'pending');
-        const resp = pend.length ? `Você possui ${pend.length} tarefa(s) pendente(s): ` + pend.map(t => t.title).join(', ') : 'Parabéns, você não tem tarefas pendentes!';
+        const resp = pend.length ? `Você tem ${pend.length} tarefa(s) pendente(s): ` + pend.map(t => t.title).join(', ') : 'Parabéns, você não tem tarefas pendentes!';
         appendMessage('assistant', resp);
         speak(resp);
         break;
@@ -219,8 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       default: {
-        // Conversa Geral
-        const resp = `Entendido. Registrei sua solicitação: "${text}". Para agendar, diga por exemplo: "Marque reunião amanhã às 15h".`;
+        const resp = `Entendido. Registrei sua solicitação. Você pode me pedir para marcar compromissos, ver sua agenda ou criar tarefas.`;
         appendMessage('assistant', resp);
         speak(resp);
         break;
@@ -231,6 +243,50 @@ document.addEventListener('DOMContentLoaded', () => {
   btnSend.addEventListener('click', handleSendMessage);
   chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') handleSendMessage();
+  });
+
+  // --- MODAL DE DETALHES DO EVENTO (VISUALIZAR / EDITAR / EXCLUIR) ---
+  function openEventDetails(evtId) {
+    const events = StorageDB.getEvents();
+    selectedEvent = events.find(e => e.id === evtId);
+    if (!selectedEvent) return;
+
+    detailTitle.textContent = selectedEvent.title;
+    detailStatus.textContent = selectedEvent.status === 'cancelled' ? 'Cancelado' : 'Confirmado';
+    detailStatus.style.background = selectedEvent.status === 'cancelled' ? 'var(--danger)' : 'var(--accent)';
+    detailStatus.style.color = '#fff';
+
+    const startDate = new Date(selectedEvent.start);
+    const endDate = new Date(selectedEvent.end);
+
+    detailBody.innerHTML = `
+      <div><strong>📅 Data:</strong> ${startDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</div>
+      <div><strong>🕒 Horário:</strong> ${startDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} até ${endDate.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
+      <div><strong>🔔 Lembrete:</strong> ${selectedEvent.reminderMinutes !== undefined ? selectedEvent.reminderMinutes + ' min antes' : 'Sem lembrete'}</div>
+      <div><strong>📝 Descrição / Contexto:</strong> ${selectedEvent.description || 'Nenhuma observação informada.'}</div>
+      <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem;">Cadastrado em: ${selectedEvent.createdAt ? new Date(selectedEvent.createdAt).toLocaleString('pt-BR') : 'Data não registrada'}</div>
+    `;
+
+    modalDetail.classList.add('show');
+  }
+
+  btnDetailClose.addEventListener('click', () => modalDetail.classList.remove('show'));
+
+  btnDetailDelete.addEventListener('click', () => {
+    if (!selectedEvent) return;
+    if (confirm(`Deseja realmente excluir ou cancelar o compromisso "${selectedEvent.title}"?`)) {
+      StorageDB.deleteEvent(selectedEvent.id);
+      modalDetail.classList.remove('show');
+      renderCalendar();
+      renderMeuDia();
+      renderAgenda();
+    }
+  });
+
+  btnDetailEdit.addEventListener('click', () => {
+    if (!selectedEvent) return;
+    modalDetail.classList.remove('show');
+    openEventModal(selectedEvent);
   });
 
   // --- CALENDÁRIO ---
@@ -273,15 +329,20 @@ document.addEventListener('DOMContentLoaded', () => {
       cell.appendChild(num);
 
       // Eventos do dia
-      const dayEvts = events.filter(e => e.start.startsWith(thisDateStr) && e.status !== 'cancelled');
+      const dayEvts = events.filter(e => e.start.startsWith(thisDateStr));
       dayEvts.forEach(evt => {
         const pill = document.createElement('div');
         pill.className = 'event-pill';
+        if (evt.status === 'cancelled') pill.style.opacity = '0.5';
         pill.textContent = `${new Date(evt.start).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} ${evt.title}`;
+        pill.addEventListener('click', (e) => {
+          e.stopPropagation(); // Evita acionar o clique da célula
+          openEventDetails(evt.id);
+        });
         cell.appendChild(pill);
       });
 
-      cell.addEventListener('click', () => openNewEventModal(thisDateStr));
+      cell.addEventListener('click', () => openEventModal(null, thisDateStr));
       grid.appendChild(cell);
     }
   }
@@ -303,7 +364,53 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCalendar();
   });
 
-  // --- MEU DIA ---
+  // --- SEÇÃO AGENDA COMPLETA ---
+  function renderAgenda() {
+    const list = document.getElementById('agenda-list');
+    const searchVal = document.getElementById('agenda-search').value.toLowerCase();
+    const filterStatus = document.getElementById('agenda-filter-status').value;
+    
+    let events = StorageDB.getEvents();
+    events.sort((a, b) => new Date(a.start) - new Date(b.start));
+
+    if (filterStatus !== 'all') {
+      events = events.filter(e => e.status === filterStatus);
+    }
+    if (searchVal) {
+      events = events.filter(e => (e.title && e.title.toLowerCase().includes(searchVal)) || (e.description && e.description.toLowerCase().includes(searchVal)));
+    }
+
+    list.innerHTML = events.length ? '' : '<p style="color:var(--text-muted); grid-column: 1/-1;">Nenhum compromisso encontrado.</p>';
+
+    events.forEach(evt => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.cursor = 'pointer';
+      const st = new Date(evt.start);
+      card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <strong>${evt.title}</strong>
+          <span style="font-size:0.75rem; padding:2px 6px; border-radius:4px; background:${evt.status === 'cancelled' ? 'var(--danger)' : 'var(--bg-tertiary)'}; color:#fff;">
+            ${evt.status === 'cancelled' ? 'Cancelado' : 'Confirmado'}
+          </span>
+        </div>
+        <p style="color:var(--text-muted); font-size:0.85rem; margin:0.5rem 0;">
+          📅 ${st.toLocaleDateString('pt-BR')} às ${st.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}
+        </p>
+        <p style="font-size:0.8rem; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+          ${evt.description || 'Sem descrição.'}
+        </p>
+      `;
+      card.addEventListener('click', () => openEventDetails(evt.id));
+      list.appendChild(card);
+    });
+  }
+
+  document.getElementById('agenda-search').addEventListener('input', renderAgenda);
+  document.getElementById('agenda-filter-status').addEventListener('change', renderAgenda);
+  document.getElementById('btn-agenda-novo-evento').addEventListener('click', () => openEventModal());
+
+  // --- SEÇÃO MEU DIA ---
   function renderMeuDia() {
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
@@ -317,7 +424,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const events = StorageDB.getEvents().filter(e => e.start.startsWith(todayStr) && e.status !== 'cancelled');
     const tasks = StorageDB.getTasks().filter(t => t.status === 'pending');
 
-    // Resumo Gerado
     let resumo = '';
     if (events.length === 0 && tasks.length === 0) {
       resumo = 'Sua agenda está livre e você não possui tarefas pendentes para hoje.';
@@ -326,22 +432,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.getElementById('meu-dia-resumo').textContent = resumo;
 
-    // Render Eventos de Hoje
     const evCont = document.getElementById('meu-dia-eventos');
     evCont.innerHTML = events.length ? '' : '<p style="color:var(--text-muted)">Nenhum evento hoje.</p>';
     events.forEach(e => {
       const card = document.createElement('div');
       card.className = 'card';
+      card.style.cursor = 'pointer';
       card.innerHTML = `
         <strong>${e.title}</strong>
         <p style="color:var(--text-muted); font-size:0.85rem; margin-top:4px;">
           🕒 ${new Date(e.start).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})} - ${new Date(e.end).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}
         </p>
       `;
+      card.addEventListener('click', () => openEventDetails(e.id));
       evCont.appendChild(card);
     });
 
-    // Render Tarefas
     const tCont = document.getElementById('meu-dia-tarefas');
     tCont.innerHTML = tasks.length ? '' : '<p style="color:var(--text-muted)">Nenhuma tarefa pendente.</p>';
     tasks.forEach(t => {
@@ -442,7 +548,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => AudioEngine.stopAlarmSound(), 3000);
   };
 
-  // --- SISTEMA DE DISPARO DE LEMBRETES E ALARMES (LOOP DE 1 SEG) ---
+  // --- LOOP DE 1 SEG: DISPARO DE ALERTAS ---
   let triggeredAlertsToday = new Set();
 
   setInterval(() => {
@@ -450,7 +556,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentTimeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const currentDayOfWeek = now.getDay();
 
-    // 1. Verificação de Alarmes
     const alarms = StorageDB.getAlarms();
     alarms.forEach(a => {
       if (a.active && a.time === currentTimeStr && (!a.days || a.days.includes(currentDayOfWeek))) {
@@ -462,7 +567,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // 2. Verificação de Lembretes de Eventos
     const events = StorageDB.getEvents();
     events.forEach(e => {
       if (e.status === 'confirmed' && e.reminderMinutes !== undefined) {
@@ -505,7 +609,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Desligamento de Alarme
   document.getElementById('btn-dismiss-alarm').addEventListener('click', () => {
     AudioEngine.stopAlarmSound();
     document.getElementById('modal-ringing').classList.remove('show');
@@ -514,7 +617,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-snooze').addEventListener('click', () => {
     AudioEngine.stopAlarmSound();
     document.getElementById('modal-ringing').classList.remove('show');
-    // Adiciona alarme temporário para daqui a 5 minutos
     const snoozeDate = new Date(Date.now() + 5 * 60 * 1000);
     const sTime = snoozeDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     StorageDB.saveAlarm({
@@ -526,20 +628,34 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAlarms();
   });
 
-  // --- MODAIS DE CADASTRO MANUAL ---
-  const modalForm = document.getElementById('modal-form');
-  const modalFields = document.getElementById('modal-fields');
-  const modalTitle = document.getElementById('modal-title');
-  let currentModalAction = null;
-
-  function openNewEventModal(prefilledDate = null) {
-    modalTitle.textContent = 'Novo Compromisso';
+  // --- MODAL DE CRIAÇÃO E EDIÇÃO DE EVENTO ---
+  function openEventModal(eventToEdit = null, prefilledDate = null) {
     currentModalAction = 'SAVE_EVENT';
-    const dVal = prefilledDate || new Date().toISOString().slice(0, 10);
+    editingId = eventToEdit ? eventToEdit.id : null;
+    modalTitle.textContent = eventToEdit ? 'Editar Compromisso' : 'Novo Compromisso';
+
+    let dVal = prefilledDate || new Date().toISOString().slice(0, 10);
+    let sTime = '10:00';
+    let eTime = '11:00';
+    let titleVal = '';
+    let descVal = '';
+    let remindVal = '15';
+    let statusVal = 'confirmed';
+
+    if (eventToEdit) {
+      dVal = eventToEdit.start.slice(0, 10);
+      sTime = new Date(eventToEdit.start).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+      eTime = new Date(eventToEdit.end).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+      titleVal = eventToEdit.title || '';
+      descVal = eventToEdit.description || '';
+      remindVal = String(eventToEdit.reminderMinutes !== undefined ? eventToEdit.reminderMinutes : '15');
+      statusVal = eventToEdit.status || 'confirmed';
+    }
+
     modalFields.innerHTML = `
       <div class="form-group">
         <label>Título:</label>
-        <input type="text" id="form-evt-title" required placeholder="Ex: Consulta com Dentista">
+        <input type="text" id="form-evt-title" required value="${titleVal}" placeholder="Ex: Consulta com Dentista">
       </div>
       <div class="form-group">
         <label>Data:</label>
@@ -548,32 +664,44 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="form-group" style="display:flex; gap:0.5rem; flex-direction:row;">
         <div style="flex:1;">
           <label>Início:</label>
-          <input type="time" id="form-evt-start" value="10:00" required>
+          <input type="time" id="form-evt-start" value="${sTime}" required>
         </div>
         <div style="flex:1;">
           <label>Fim:</label>
-          <input type="time" id="form-evt-end" value="11:00" required>
+          <input type="time" id="form-evt-end" value="${eTime}" required>
         </div>
       </div>
       <div class="form-group">
         <label>Avisar com antecedência:</label>
         <select id="form-evt-remind">
-          <option value="0">No horário</option>
-          <option value="5">5 minutos antes</option>
-          <option value="15" selected>15 minutos antes</option>
-          <option value="30">30 minutos antes</option>
-          <option value="60">1 hora antes</option>
+          <option value="0" ${remindVal === '0' ? 'selected' : ''}>No horário</option>
+          <option value="5" ${remindVal === '5' ? 'selected' : ''}>5 minutos antes</option>
+          <option value="15" ${remindVal === '15' ? 'selected' : ''}>15 minutos antes</option>
+          <option value="30" ${remindVal === '30' ? 'selected' : ''}>30 minutos antes</option>
+          <option value="60" ${remindVal === '60' ? 'selected' : ''}>1 hora antes</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label>Situação / Status:</label>
+        <select id="form-evt-status">
+          <option value="confirmed" ${statusVal === 'confirmed' ? 'selected' : ''}>Confirmado / Ativo</option>
+          <option value="cancelled" ${statusVal === 'cancelled' ? 'selected' : ''}>Cancelado</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Descrição / Observações:</label>
+        <textarea id="form-evt-desc" rows="3" placeholder="Informações detalhadas...">${descVal}</textarea>
       </div>
     `;
     modalForm.classList.add('show');
   }
 
-  document.getElementById('btn-novo-evento').addEventListener('click', () => openNewEventModal());
+  document.getElementById('btn-novo-evento').addEventListener('click', () => openEventModal());
 
   document.getElementById('btn-nova-tarefa').addEventListener('click', () => {
     modalTitle.textContent = 'Nova Tarefa';
     currentModalAction = 'SAVE_TASK';
+    editingId = null;
     modalFields.innerHTML = `
       <div class="form-group">
         <label>Título:</label>
@@ -594,6 +722,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-novo-alarme').addEventListener('click', () => {
     modalTitle.textContent = 'Novo Alarme';
     currentModalAction = 'SAVE_ALARM';
+    editingId = null;
     modalFields.innerHTML = `
       <div class="form-group">
         <label>Horário:</label>
@@ -619,15 +748,21 @@ document.addEventListener('DOMContentLoaded', () => {
       const startT = document.getElementById('form-evt-start').value;
       const endT = document.getElementById('form-evt-end').value;
       const remind = parseInt(document.getElementById('form-evt-remind').value, 10);
+      const status = document.getElementById('form-evt-status').value;
+      const description = document.getElementById('form-evt-desc').value;
 
       StorageDB.saveEvent({
+        id: editingId || undefined,
         title,
         start: `${date}T${startT}:00`,
         end: `${date}T${endT}:00`,
         reminderMinutes: remind,
-        status: 'confirmed'
+        status,
+        description
       });
       renderCalendar();
+      renderAgenda();
+      renderMeuDia();
     } else if (currentModalAction === 'SAVE_TASK') {
       const title = document.getElementById('form-task-title').value;
       const priority = document.getElementById('form-task-prio').value;
@@ -694,7 +829,6 @@ document.addEventListener('DOMContentLoaded', () => {
     StorageDB.saveSettings(cfg);
   });
 
-  // Carrega configurações prévias
   const initCfg = StorageDB.getSettings();
   if (initCfg.theme) document.documentElement.setAttribute('data-theme', initCfg.theme);
   document.getElementById('cfg-voice-feedback').checked = !!initCfg.voiceFeedback;
