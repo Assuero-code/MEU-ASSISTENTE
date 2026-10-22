@@ -474,3 +474,70 @@ header.topbar {
     padding: 1px 2px;
   }
 }
+/* ======================================================
+   CORREÇÃO DA BARRA DE NAVEGAÇÃO INFERIOR
+   ====================================================== */
+
+/* 1. Container que envolve os botões (destrava a rolagem) */
+.nav-item {
+  flex-shrink: 0 !important;       /* Impede que as opções fiquem espremidas */
+  padding: 10px 18px !important;   /* Deixa o botão maior e fácil de tocar */
+  font-size: 15px !important;      /* Texto e emojis maiores */
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+/* O container pai onde estão os .nav-item */
+.nav-item:first-child,
+.nav-item {
+  /* Garante alinhamento limpo */
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* Localiza a barra que segura os itens */
+div:has(> .nav-item),
+nav:has(.nav-item),
+.bottom-nav,
+.nav-bar {
+  display: flex !important;
+  overflow-x: auto !important;      /* Habilita rolagem para os lados */
+  overflow-y: hidden !important;
+  white-space: nowrap !important;
+  gap: 8px !important;
+  padding: 8px 12px 10px 12px !important;
+
+  /* AS LINHAS QUE DESTRAVAM A TELA NO CELULAR */
+  -webkit-overflow-scrolling: touch !important; /* Rola suavemente com inércia */
+  touch-action: pan-x !important;               /* Libera rolagem sem travar a tela */
+  overscroll-behavior-x: contain !important;
+
+  /* Barra visível no Firefox */
+  scrollbar-width: thin !important;
+  scrollbar-color: #3b82f6 rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 2. BARRA DE ROLAGEM HORIZONTAL VISÍVEL (Chrome, Safari, Celular) */
+div:has(> .nav-item)::-webkit-scrollbar,
+nav:has(.nav-item)::-webkit-scrollbar,
+.bottom-nav::-webkit-scrollbar,
+.nav-bar::-webkit-scrollbar {
+  height: 6px !important;           /* Altura da barra visível */
+  display: block !important;
+}
+
+div:has(> .nav-item)::-webkit-scrollbar-track,
+nav:has(.nav-item)::-webkit-scrollbar-track,
+.bottom-nav::-webkit-scrollbar-track,
+.nav-bar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1) !important; /* Trilho cinza sutil */
+  border-radius: 10px !important;
+}
+
+div:has(> .nav-item)::-webkit-scrollbar-thumb,
+nav:has(.nav-item)::-webkit-scrollbar-thumb,
+.bottom-nav::-webkit-scrollbar-thumb,
+.nav-bar::-webkit-scrollbar-thumb {
+  background: #3b82f6 !important;                  /* Indicador azul visível */
+  border-radius: 10px !important;
+}
