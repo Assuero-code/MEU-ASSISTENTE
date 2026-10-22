@@ -1,733 +1,173 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Assistente Pessoal Executivo</title>
-  <meta name="theme-color" content="#1e293b">
-  <style>
-    :root {
-      --bg-main: #0f172a;
-      --bg-card: #1e293b;
-      --bg-input: #334155;
-      --primary: #3b82f6;
-      --primary-hover: #2563eb;
-      --danger: #ef4444;
-      --danger-hover: #dc2626;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --border: #334155;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    }
-
-    body {
-      background-color: var(--bg-main);
-      color: var(--text);
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    header {
-      background-color: var(--bg-card);
-      border-bottom: 1px solid var(--border);
-      padding: 0.75rem 1.5rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 1.1rem;
-      font-weight: 700;
-    }
-
-    .user-info {
-      display: flex;
-      gap: 0.75rem;
-      align-items: center;
-    }
-
-    .status-badge {
-      font-size: 0.75rem;
-      padding: 0.2rem 0.6rem;
-      border-radius: 9999px;
-      background-color: var(--border);
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-    }
-
-    .status-badge.online {
-      background-color: rgba(16, 185, 129, 0.2);
-      color: var(--success);
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: currentColor;
-    }
-
-    .main-container {
-      display: grid;
-      grid-template-columns: 320px 1fr;
-      flex: 1;
-      height: calc(100vh - 60px);
-      overflow: hidden;
-    }
-
-    @media (max-width: 850px) {
-      .main-container {
-        grid-template-columns: 1fr;
-      }
-      .sidebar {
-        display: none;
-      }
-    }
-
-    /* SIDEBAR */
-    .sidebar {
-      background-color: var(--bg-card);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
-      padding: 1rem;
-      overflow-y: auto;
-    }
-
-    .sidebar-section h3 {
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin-bottom: 0.75rem;
-    }
-
-    .card-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-
-    .card-item {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border);
-      padding: 0.75rem;
-      border-radius: 6px;
-      font-size: 0.85rem;
-    }
-
-    .card-item strong {
-      display: block;
-      color: var(--text);
-    }
-
-    .card-item span {
-      color: var(--text-muted);
-      font-size: 0.75rem;
-    }
-
-    /* CHAT VIEW */
-    .chat-view {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      background-color: var(--bg-main);
-    }
-
-    .chat-messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 1.5rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .message {
-      max-width: 80%;
-      padding: 0.85rem 1.15rem;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      line-height: 1.4;
-      word-break: break-word;
-    }
-
-    .message.assistant {
-      align-self: flex-start;
-      background-color: var(--bg-card);
-      border: 1px solid var(--border);
-    }
-
-    .message.user {
-      align-self: flex-end;
-      background-color: var(--primary);
-      color: white;
-    }
-
-    /* INPUT BAR */
-    .input-bar {
-      padding: 1rem 1.5rem;
-      background-color: var(--bg-card);
-      border-top: 1px solid var(--border);
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-    }
-
-    .input-bar input {
-      flex: 1;
-      background-color: var(--bg-input);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 0.75rem 1rem;
-      border-radius: 6px;
-      outline: none;
-      font-size: 0.95rem;
-    }
-
-    .input-bar input:focus {
-      border-color: var(--primary);
-    }
-
-    .btn {
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      padding: 0.75rem 1.25rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: 600;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      transition: background-color 0.2s;
-    }
-
-    .btn:hover {
-      background-color: var(--primary-hover);
-    }
-
-    .btn-secondary {
-      background-color: var(--bg-input);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-
-    .btn-secondary:hover {
-      background-color: var(--border);
-    }
-
-    .btn-danger {
-      background-color: var(--danger);
-      color: white;
-      border: none;
-    }
-
-    .btn-danger:hover {
-      background-color: var(--danger-hover);
-    }
-
-    .btn-mic.recording {
-      background-color: var(--danger);
-      animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-      70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-    }
-
-    /* MODAL */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.7);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .modal-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      max-width: 480px;
-      width: 90%;
-      padding: 1.5rem;
-    }
-
-    .modal-card h2 {
-      margin-bottom: 0.75rem;
-      font-size: 1.2rem;
-    }
-
-    .modal-card p {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      margin-bottom: 1.2rem;
-    }
-
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.75rem;
-    }
-  </style>
+  <title>Meu Assistente Pessoal</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <meta name="theme-color" content="#2563eb">
 </head>
 <body>
 
-  <header>
+  <!-- Menu de Navegação Lateral / Inferior Mobile -->
+  <aside class="sidebar">
     <div class="brand">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
-        <path d="M12 6v6l4 2"/>
-      </svg>
-      <span>Secretário Virtual</span>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+      <span>Meu Assistente</span>
     </div>
-    <div class="user-info">
-      <div id="backendStatus" class="status-badge">
-        <span class="status-dot"></span>
-        <span id="backendText">Conectando...</span>
-      </div>
-      <button id="authBtn" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">Conectar Google</button>
-    </div>
-  </header>
+    <nav class="nav-menu">
+      <button class="nav-item active" data-view="chat">💬 Conversa</button>
+      <button class="nav-item" data-view="meu-dia">☀️ Meu Dia</button>
+      <button class="nav-item" data-view="calendario">📅 Calendário</button>
+      <button class="nav-item" data-view="tarefas">✅ Tarefas</button>
+      <button class="nav-item" data-view="alarmes">⏰ Alarmes</button>
+      <button class="nav-item" data-view="config">⚙️ Ajustes</button>
+    </nav>
+  </aside>
 
-  <div class="main-container">
-    <aside class="sidebar">
-      <div class="sidebar-section">
-        <h3>Compromissos de Hoje</h3>
-        <div id="calendarList" class="card-list">
-          <div class="card-item"><span>Nenhum compromisso carregado.</span></div>
+  <!-- Painel Principal de Exibição -->
+  <main class="main-viewport">
+    <header class="topbar">
+      <h2 id="topbar-title">Conversa com Assistente</h2>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <span id="push-status-badge" style="font-size: 0.8rem; color: var(--text-muted);">Verificando notificações...</span>
+        <button class="btn btn-secondary" id="btn-toggle-theme" title="Alternar Tema">🌓</button>
+      </div>
+    </header>
+
+    <!-- 1. Conversa / Chat -->
+    <section id="view-chat" class="view-section active">
+      <div class="chat-container">
+        <div class="chat-history" id="chat-history">
+          <div class="msg msg-assistant">
+            Olá! Sou o seu assistente pessoal digital. Posso agendar reuniões, lembretes, configurar alarmes e esclarecer dúvidas. Como posso ajudar hoje?
+          </div>
+        </div>
+        <div class="chat-controls">
+          <button id="btn-mic" class="btn btn-secondary" title="Falar">🎙️</button>
+          <input type="text" id="chat-input" placeholder="Ex: Marque consulta amanhã às 14h ou crie um alarme para 07:00...">
+          <button id="btn-send" class="btn">Enviar</button>
         </div>
       </div>
+    </section>
 
-      <div class="sidebar-section">
-        <h3>Tarefas Pendentes</h3>
-        <div id="taskList" class="card-list">
-          <div class="card-item"><span>Nenhuma tarefa registrada.</span></div>
-        </div>
-      </div>
-    </aside>
-
-    <main class="chat-view">
-      <div id="chatMessages" class="chat-messages">
-        <div class="message assistant">
-          Olá! Sou seu assistente pessoal executivo. Posso organizar seus compromissos no Google Agenda, checar seus e-mails do Gmail e agendar tarefas.
-        </div>
-      </div>
-
-      <div class="input-bar">
-        <button id="btnVoice" class="btn btn-secondary btn-mic" title="Gravar voz">
-          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
-          </svg>
-        </button>
-        <button id="btnStopVoice" class="btn btn-secondary" title="Interromper fala">
-          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <rect x="6" y="6" width="12" height="12"/>
-          </svg>
-        </button>
-        <input type="text" id="userInput" placeholder="Digite um comando ou fale comigo..." />
-        <button id="btnSend" class="btn">Enviar</button>
-      </div>
-    </main>
-  </div>
-
-  <div id="confirmModal" class="modal-overlay">
-    <div class="modal-card">
-      <h2 id="modalTitle">Confirmação de Ação</h2>
-      <p id="modalDescription">Deseja realmente confirmar esta operação?</p>
-      <div class="modal-actions">
-        <button id="btnCancelAction" class="btn btn-secondary">Cancelar</button>
-        <button id="btnConfirmAction" class="btn">Confirmar</button>
-      </div>
-    </div>
-  </div>
-
-  <script type="module">
-    // =========================================================================
-    // CONFIGURAÇÕES - INSIRA SUAS CREDENCIAIS AQUI
-    // =========================================================================
-    const BACKEND_URL = "https://SEU_WORKER.workers.dev"; // Cole a URL do seu Cloudflare Worker
-    const CLIENT_ID = "SEU_GOOGLE_CLIENT_ID.apps.googleusercontent.com"; // Cole seu Client ID aqui
-
-    // Estado da aplicação
-    let userId = localStorage.getItem('assistant_user_id') || null;
-    let userName = localStorage.getItem('assistant_user_name') || null;
-    let pendingAction = null;
-    let conversationHistory = [];
-
-    // Elementos da Interface
-    const chatMessages = document.getElementById('chatMessages');
-    const userInput = document.getElementById('userInput');
-    const btnSend = document.getElementById('btnSend');
-    const btnVoice = document.getElementById('btnVoice');
-    const btnStopVoice = document.getElementById('btnStopVoice');
-    const authBtn = document.getElementById('authBtn');
-    const backendStatus = document.getElementById('backendStatus');
-    const backendText = document.getElementById('backendText');
-    const confirmModal = document.getElementById('confirmModal');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalDescription = document.getElementById('modalDescription');
-    const btnConfirmAction = document.getElementById('btnConfirmAction');
-    const btnCancelAction = document.getElementById('btnCancelAction');
-
-    // =========================================================================
-    // CONTROLE DE AUTENTICAÇÃO (OAUTH 2.0 GOOGLE)
-    // =========================================================================
-    function updateAuthButtonState() {
-      if (userId) {
-        authBtn.innerText = `Desconectar (${userName || 'Google'})`;
-        authBtn.className = "btn btn-danger";
-        authBtn.style.padding = "0.4rem 0.8rem";
-        authBtn.style.fontSize = "0.8rem";
-      } else {
-        authBtn.innerText = "Conectar Google";
-        authBtn.className = "btn btn-secondary";
-        authBtn.style.padding = "0.4rem 0.8rem";
-        authBtn.style.fontSize = "0.8rem";
-      }
-    }
-
-    authBtn.addEventListener('click', () => {
-      // Se já estiver logado, o clique funciona como LOGOUT
-      if (userId) {
-        if (confirm("Deseja realmente desconectar da sua conta Google e trocar de usuário?")) {
-          localStorage.removeItem('assistant_user_id');
-          localStorage.removeItem('assistant_user_name');
-          userId = null;
-          userName = null;
-          updateAuthButtonState();
-          appendMessage('assistant', 'Conta desconectada. Você pode conectar outra conta a qualquer momento.');
-          document.getElementById('calendarList').innerHTML = '<div class="card-item"><span>Nenhum compromisso carregado.</span></div>';
-          document.getElementById('taskList').innerHTML = '<div class="card-item"><span>Nenhuma tarefa registrada.</span></div>';
-        }
-        return;
-      }
-
-      // Se não estiver logado, redireciona ao Google FORÇANDO A ESCOLHA DE CONTA
-      const currentUrlClean = window.location.origin + window.location.pathname;
-      const scopes = [
-        "https://www.googleapis.com/auth/calendar",
-        "https://www.googleapis.com/auth/gmail.modify",
-        "openid",
-        "email",
-        "profile"
-      ].join(" ");
-
-      // prompt=select_account força a tela de seleção de contas do Google
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${encodeURIComponent(CLIENT_ID)}` +
-        `&redirect_uri=${encodeURIComponent(currentUrlClean)}` +
-        `&response_type=code` +
-        `&scope=${encodeURIComponent(scopes)}` +
-        `&access_type=offline` +
-        `&prompt=select_account%20consent`;
-
-      window.location.href = authUrl;
-    });
-
-    async function handleAuthRedirect() {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
-      const error = params.get('error');
-
-      if (error) {
-        appendMessage('assistant', `Aviso: Permissão não concedida (${error}).`);
-        window.history.replaceState({}, document.title, window.location.pathname);
-        return;
-      }
-
-      if (code) {
-        appendMessage('assistant', 'Validando autorização com o servidor seguro...');
-        try {
-          const res = await fetch(`${BACKEND_URL}/api/auth/google`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code })
-          });
-
-          if (!res.ok) {
-            const errDetail = await res.text();
-            throw new Error(errDetail);
-          }
-
-          const data = await res.json();
-          if (data.userId) {
-            userId = data.userId;
-            userName = data.name || data.email;
-            localStorage.setItem('assistant_user_id', userId);
-            localStorage.setItem('assistant_user_name', userName);
-
-            // Limpa a URL removendo o código de autorização
-            window.history.replaceState({}, document.title, window.location.pathname);
-            
-            updateAuthButtonState();
-            appendMessage('assistant', `Conectado com sucesso com a conta: ${userName}!`);
-            refreshDashboardData();
-          }
-        } catch (e) {
-          appendMessage('assistant', `Falha ao concluir autenticação: ${e.message}`);
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-      }
-    }
-
-    // =========================================================================
-    // RECONHECIMENTO E SÍNTESE DE VOZ
-    // =========================================================================
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let recognition = null;
-    let isRecording = false;
-
-    if (SpeechRecognition) {
-      recognition = new SpeechRecognition();
-      recognition.lang = 'pt-BR';
-      recognition.continuous = false;
-      recognition.interimResults = false;
-
-      recognition.onstart = () => {
-        isRecording = true;
-        btnVoice.classList.add('recording');
-      };
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        userInput.value = transcript;
-        sendMessage(transcript);
-      };
-
-      recognition.onerror = () => stopRecording();
-      recognition.onend = () => stopRecording();
-    }
-
-    function toggleRecording() {
-      if (!recognition) {
-        alert("Reconhecimento de voz não suportado neste navegador.");
-        return;
-      }
-      if (isRecording) {
-        recognition.stop();
-      } else {
-        recognition.start();
-      }
-    }
-
-    function stopRecording() {
-      isRecording = false;
-      btnVoice.classList.remove('recording');
-    }
-
-    function speakText(text) {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'pt-BR';
-        window.speechSynthesis.speak(utterance);
-      }
-    }
-
-    btnStopVoice.addEventListener('click', () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-    });
-
-    btnVoice.addEventListener('click', toggleRecording);
-
-    // =========================================================================
-    // MENSAGENS E CHAT
-    // =========================================================================
-    function appendMessage(role, text) {
-      const msgDiv = document.createElement('div');
-      msgDiv.className = `message ${role}`;
-      msgDiv.innerText = text;
-      chatMessages.appendChild(msgDiv);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    async function sendMessage(text) {
-      const prompt = text || userInput.value.trim();
-      if (!prompt) return;
-
-      appendMessage('user', prompt);
-      userInput.value = '';
-
-      try {
-        const response = await fetch(`${BACKEND_URL}/api/chat`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-Id': userId || ''
-          },
-          body: JSON.stringify({
-            message: prompt,
-            history: conversationHistory
-          })
-        });
-
-        if (!response.ok) throw new Error('Não foi possível obter resposta do servidor.');
-
-        const data = await response.json();
+    <!-- 2. Meu Dia -->
+    <section id="view-meu-dia" class="view-section">
+      <div style="max-width: 900px; margin:0 auto;">
+        <h1 id="meu-dia-saudacao" style="margin-bottom:0.5rem;">Bom dia</h1>
+        <p id="meu-dia-data" style="color:var(--text-muted); margin-bottom:1.5rem;"></p>
         
-        appendMessage('assistant', data.reply);
-        speakText(data.reply);
+        <div class="card" style="margin-bottom:1.5rem; border-left:4px solid var(--accent);">
+          <h3>✨ Resumo Inteligente do Dia</h3>
+          <p id="meu-dia-resumo" style="margin-top:0.5rem; line-height:1.5;">Calculando compromissos...</p>
+        </div>
 
-        conversationHistory.push({ role: 'user', content: prompt });
-        conversationHistory.push({ role: 'assistant', content: data.reply });
+        <h3>📅 Agenda de Hoje</h3>
+        <div id="meu-dia-eventos" class="card-grid"></div>
 
-        if (data.requiresFrontendConfirmation && data.pendingActionData) {
-          triggerConfirmationModal(data.pendingActionData);
-        }
+        <h3 style="margin-top: 1.5rem;">✅ Tarefas Prioritárias</h3>
+        <div id="meu-dia-tarefas" class="card-grid"></div>
+      </div>
+    </section>
 
-        refreshDashboardData();
+    <!-- 3. Calendário -->
+    <section id="view-calendario" class="view-section">
+      <div class="calendar-controls">
+        <div>
+          <button class="btn btn-secondary" id="cal-prev">◀</button>
+          <button class="btn btn-secondary" id="cal-today">Hoje</button>
+          <button class="btn btn-secondary" id="cal-next">▶</button>
+          <span id="cal-month-year" style="font-weight:700; margin-left:1rem; font-size:1.1rem;"></span>
+        </div>
+        <button class="btn" id="btn-novo-evento">+ Novo Evento</button>
+      </div>
+      <div class="calendar-grid" id="calendar-grid"></div>
+    </section>
 
-      } catch (err) {
-        appendMessage('assistant', `Erro: ${err.message}`);
-      }
-    }
+    <!-- 4. Tarefas -->
+    <section id="view-tarefas" class="view-section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h2>Minhas Tarefas</h2>
+        <button class="btn" id="btn-nova-tarefa">+ Criar Tarefa</button>
+      </div>
+      <div id="tasks-list" class="card-grid"></div>
+    </section>
 
-    btnSend.addEventListener('click', () => sendMessage());
-    userInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') sendMessage();
-    });
+    <!-- 5. Alarmes -->
+    <section id="view-alarmes" class="view-section">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <h2>Alarmes Ativos</h2>
+        <button class="btn" id="btn-novo-alarme">+ Criar Alarme</button>
+      </div>
+      <div id="alarms-list" class="card-grid"></div>
+    </section>
 
-    // =========================================================================
-    // CONFIRMAÇÃO DE AÇÕES SENSÍVEIS
-    // =========================================================================
-    function triggerConfirmationModal(actionData) {
-      pendingAction = actionData;
-      modalTitle.innerText = "Confirmar Agendamento";
-      modalDescription.innerText = `Deseja realmente marcar: "${actionData.details.summary}" em ${actionData.details.startDateTime}?`;
-      confirmModal.style.display = 'flex';
-    }
+    <!-- 6. Ajustes -->
+    <section id="view-config" class="view-section">
+      <div style="max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem;">
+        <h2>Configurações do Sistema</h2>
+        
+        <div class="card">
+          <h3>Fuso Horário & Voz</h3>
+          <div class="form-group" style="margin-top:0.75rem;">
+            <label>Fuso Horário Principal:</label>
+            <input type="text" id="cfg-timezone" value="America/Sao_Paulo" readonly>
+          </div>
+          <div class="form-group">
+            <label><input type="checkbox" id="cfg-voice-feedback"> Ler respostas em voz alta</label>
+          </div>
+        </div>
 
-    btnCancelAction.addEventListener('click', () => {
-      confirmModal.style.display = 'none';
-      pendingAction = null;
-      appendMessage('assistant', 'Operação cancelada pelo usuário.');
-    });
+        <div class="card">
+          <h3>Notificações & PWA</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">Permita notificações para lembretes e alarmes.</p>
+          <button class="btn btn-secondary" id="btn-request-perm">Solicitar Permissão de Notificação</button>
+        </div>
 
-    btnConfirmAction.addEventListener('click', async () => {
-      if (!pendingAction) return;
-      confirmModal.style.display = 'none';
-      appendMessage('assistant', 'Confirmando operação com o Google...');
+        <div class="card">
+          <h3>Backup e Restauração de Dados</h3>
+          <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+            <button class="btn btn-secondary" id="btn-export-data">Exportar JSON</button>
+            <button class="btn btn-secondary" id="btn-import-trigger">Importar JSON</button>
+            <input type="file" id="file-importer" style="display:none;" accept=".json">
+            <button class="btn btn-danger" id="btn-wipe-data">Limpar Tudo</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 
-      try {
-        const res = await fetch(`${BACKEND_URL}/api/action/confirm`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-User-Id': userId
-          },
-          body: JSON.stringify(pendingAction)
-        });
+  <!-- Modal Genérico para Criação/Edição -->
+  <div class="modal-backdrop" id="modal-form">
+    <div class="modal-box">
+      <h3 id="modal-title" style="margin-bottom:1rem;">Cadastrar</h3>
+      <form id="app-dynamic-form">
+        <div id="modal-fields"></div>
+        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem;">
+          <button type="button" class="btn btn-secondary" id="modal-btn-cancel">Cancelar</button>
+          <button type="submit" class="btn" id="modal-btn-save">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-        const result = await res.json();
-        if (result.success) {
-          appendMessage('assistant', '✅ Ação concluída e registrada com sucesso!');
-          refreshDashboardData();
-        } else {
-          appendMessage('assistant', '❌ Ocorreu uma falha ao tentar executar a ação.');
-        }
-      } catch (e) {
-        appendMessage('assistant', `Erro: ${e.message}`);
-      } finally {
-        pendingAction = null;
-      }
-    });
+  <!-- Diálogo Ativo de Alarme Tocando -->
+  <div class="modal-backdrop" id="modal-ringing" style="z-index:9999;">
+    <div class="modal-box" style="text-align:center; border: 2px solid var(--danger);">
+      <h1 style="color:var(--danger); font-size: 2.5rem; margin-bottom: 0.5rem;">⏰</h1>
+      <h2 id="ringing-title">Alarme Disparado!</h2>
+      <p id="ringing-desc" style="margin: 1rem 0; color:var(--text-muted);"></p>
+      <div style="display:flex; justify-content:center; gap:1rem;">
+        <button class="btn btn-secondary" id="btn-snooze">Soneca (5 min)</button>
+        <button class="btn btn-danger" id="btn-dismiss-alarm">Desligar Alarme</button>
+      </div>
+    </div>
+  </div>
 
-    // =========================================================================
-    // DADOS DO DASHBOARD
-    // =========================================================================
-    async function refreshDashboardData() {
-      if (!userId) return;
-
-      try {
-        const resCal = await fetch(`${BACKEND_URL}/api/calendar/today`, {
-          headers: { 'X-User-Id': userId }
-        });
-        if (resCal.ok) {
-          const events = await resCal.json();
-          const calContainer = document.getElementById('calendarList');
-          calContainer.innerHTML = '';
-          if (events.length === 0) {
-            calContainer.innerHTML = '<div class="card-item"><span>Nenhum compromisso hoje.</span></div>';
-          } else {
-            events.forEach(ev => {
-              const div = document.createElement('div');
-              div.className = 'card-item';
-              div.innerHTML = `<strong>${ev.summary}</strong><span>${new Date(ev.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>`;
-              calContainer.appendChild(div);
-            });
-          }
-        }
-      } catch (_) {}
-
-      try {
-        const resTasks = await fetch(`${BACKEND_URL}/api/tasks`, {
-          headers: { 'X-User-Id': userId }
-        });
-        if (resTasks.ok) {
-          const tasks = await resTasks.json();
-          const taskContainer = document.getElementById('taskList');
-          taskContainer.innerHTML = '';
-          if (tasks.length === 0) {
-            taskContainer.innerHTML = '<div class="card-item"><span>Sem pendências.</span></div>';
-          } else {
-            tasks.forEach(t => {
-              const div = document.createElement('div');
-              div.className = 'card-item';
-              div.innerHTML = `<strong>${t.title}</strong><span>Prioridade: ${t.priority}</span>`;
-              taskContainer.appendChild(div);
-            });
-          }
-        }
-      } catch (_) {}
-    }
-
-    function checkBackendConnection() {
-      fetch(`${BACKEND_URL}/api/tasks`, { headers: { 'X-User-Id': 'ping' } })
-        .then(() => {
-          backendStatus.classList.add('online');
-          backendText.innerText = "Online";
-        })
-        .catch(() => {
-          backendText.innerText = "Worker Offline";
-        });
-    }
-
-    // Inicialização
-    updateAuthButtonState();
-    handleAuthRedirect();
-    checkBackendConnection();
-    if (userId) {
-      refreshDashboardData();
-    }
-  </script>
+  <script src="storage.js"></script>
+  <script src="audio.js"></script>
+  <script src="nlp.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
