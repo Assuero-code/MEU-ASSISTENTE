@@ -10,7 +10,7 @@
 </head>
 <body>
 
-  <!-- Menu de Navegação Lateral / Inferior Mobile -->
+  <!-- Menu de Navegação -->
   <aside class="sidebar">
     <div class="brand">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
@@ -27,7 +27,7 @@
     </nav>
   </aside>
 
-  <!-- Painel Principal de Exibição -->
+  <!-- Painel Principal -->
   <main class="main-viewport">
     <header class="topbar">
       <h2 id="topbar-title">Conversa com Assistente</h2>
@@ -42,12 +42,12 @@
       <div class="chat-container">
         <div class="chat-history" id="chat-history">
           <div class="msg msg-assistant">
-            Olá! Sou o seu assistente pessoal digital. Posso agendar reuniões, lembretes, configurar alarmes e esclarecer dúvidas. Como posso ajudar hoje?
+            Olá! Sou seu assistente pessoal digital. Posso organizar seus compromissos, lembretes, gerenciar tarefas, disparar alarmes e tirar dúvidas. Como posso ajudar agora?
           </div>
         </div>
         <div class="chat-controls">
           <button id="btn-mic" class="btn btn-secondary" title="Falar">🎙️</button>
-          <input type="text" id="chat-input" placeholder="Ex: Marque consulta amanhã às 14h ou crie um alarme para 07:00...">
+          <input type="text" id="chat-input" placeholder="Ex: Marque reunião amanhã às 14h ou crie um alarme para 07:00...">
           <button id="btn-send" class="btn">Enviar</button>
         </div>
       </div>
@@ -72,7 +72,7 @@
       </div>
     </section>
 
-    <!-- 3. Agenda Completa (NOVO) -->
+    <!-- 3. Agenda Completa -->
     <section id="view-agenda" class="view-section">
       <div style="max-width: 900px; margin: 0 auto;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:10px;">
@@ -123,42 +123,94 @@
       <div id="alarms-list" class="card-grid"></div>
     </section>
 
-    <!-- 7. Ajustes -->
+    <!-- 7. Ajustes / Configurações (Restaurado com Todas as Opções) -->
     <section id="view-config" class="view-section">
-      <div style="max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem;">
+      <div style="max-width: 650px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem;">
         <h2>Configurações do Sistema</h2>
         
+        <!-- Fuso Horário e Idioma -->
         <div class="card">
-          <h3>Fuso Horário & Voz</h3>
-          <div class="form-group" style="margin-top:0.75rem;">
-            <label>Fuso Horário Principal:</label>
-            <input type="text" id="cfg-timezone" value="America/Sao_Paulo" readonly>
+          <h3>🌍 Região & Fuso Horário</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+            O calendário e os lembretes utilizam este fuso horário como padrão.
+          </p>
+          <div class="form-group">
+            <label for="cfg-timezone">Fuso Horário Padrão:</label>
+            <select id="cfg-timezone">
+              <option value="America/Sao_Paulo" selected>Brasília (UTC-3) — America/Sao_Paulo</option>
+              <option value="America/Manaus">Manaus (UTC-4) — America/Manaus</option>
+              <option value="America/Belem">Belém (UTC-3) — America/Belem</option>
+              <option value="America/Fortaleza">Fortaleza (UTC-3) — America/Fortaleza</option>
+              <option value="America/Cuiaba">Cuiabá (UTC-4) — America/Cuiaba</option>
+              <option value="America/Rio_Branco">Rio Branco (UTC-5) — America/Rio_Branco</option>
+              <option value="Europe/Lisbon">Lisboa (UTC+0/+1) — Europe/Lisbon</option>
+              <option value="UTC">UTC Universal</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Síntese de Voz -->
+        <div class="card">
+          <h3>🎙️ Interação por Voz</h3>
+          <div class="form-group">
+            <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+              <input type="checkbox" id="cfg-voice-feedback"> Ler respostas do assistente em voz alta
+            </label>
           </div>
           <div class="form-group">
-            <label><input type="checkbox" id="cfg-voice-feedback"> Ler respostas em voz alta</label>
+            <label for="cfg-voice-rate">Velocidade da Voz (<span id="cfg-voice-rate-val">1.0</span>x):</label>
+            <input type="range" id="cfg-voice-rate" min="0.7" max="1.5" step="0.1" value="1.0">
           </div>
         </div>
 
+        <!-- Conexão Opcional de IA Remota / Backend -->
         <div class="card">
-          <h3>Notificações & PWA</h3>
-          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">Permita notificações para lembretes e alarmes.</p>
-          <button class="btn btn-secondary" id="btn-request-perm">Solicitar Permissão de Notificação</button>
+          <h3>🧠 Inteligência Artificial (Opcional)</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+            O parser nativo em português funciona 100% offline. Se desejar conectar a um modelo LLM externo (OpenAI / Groq / Cloudflare Workers), configure abaixo:
+          </p>
+          <div class="form-group">
+            <label for="cfg-ai-endpoint">Endpoint da API / Backend URL:</label>
+            <input type="url" id="cfg-ai-endpoint" placeholder="https://seu-backend.exemplo.com/v1/chat">
+          </div>
+          <div class="form-group">
+            <label for="cfg-ai-key">Chave de API (Armazenada localmente):</label>
+            <input type="password" id="cfg-ai-key" placeholder="sk-...">
+          </div>
+          <button class="btn btn-secondary" id="btn-save-ai-cfg" style="align-self:flex-start;">Salvar Conexão de IA</button>
         </div>
 
+        <!-- Notificações -->
         <div class="card">
-          <h3>Backup e Restauração de Dados</h3>
-          <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
-            <button class="btn btn-secondary" id="btn-export-data">Exportar JSON</button>
-            <button class="btn btn-secondary" id="btn-import-trigger">Importar JSON</button>
+          <h3>🔔 Notificações & PWA</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+            Habilite notificações nativas para alarmes e lembretes de compromissos.
+          </p>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-secondary" id="btn-request-perm">Solicitar Permissão</button>
+            <button class="btn btn-secondary" id="btn-test-notif">Enviar Notificação de Teste</button>
+          </div>
+        </div>
+
+        <!-- Backup & Restauração -->
+        <div class="card">
+          <h3>💾 Backup e Restauração de Dados</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+            Seus dados ficam gravados com segurança no navegador. Faça backup periódico em formato JSON.
+          </p>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-secondary" id="btn-export-data">Exportar Backup JSON</button>
+            <button class="btn btn-secondary" id="btn-import-trigger">Importar Backup JSON</button>
             <input type="file" id="file-importer" style="display:none;" accept=".json">
-            <button class="btn btn-danger" id="btn-wipe-data">Limpar Tudo</button>
+            <button class="btn btn-danger" id="btn-wipe-data">Limpar Todos os Dados</button>
           </div>
         </div>
+
       </div>
     </section>
   </main>
 
-  <!-- Modal Genérico para Criação/Edição -->
+  <!-- Modal de Criação / Edição de Evento, Tarefa e Alarme -->
   <div class="modal-backdrop" id="modal-form">
     <div class="modal-box">
       <h3 id="modal-title" style="margin-bottom:1rem;">Cadastrar</h3>
@@ -172,7 +224,7 @@
     </div>
   </div>
 
-  <!-- Modal de Detalhes / Visualização do Evento (NOVO) -->
+  <!-- Modal de Detalhes do Evento -->
   <div class="modal-backdrop" id="modal-detail">
     <div class="modal-box">
       <div style="display:flex; justify-content:space-between; align-items:flex-start;">
@@ -181,7 +233,7 @@
       </div>
       <div id="detail-body" style="margin-top:1rem; display:flex; flex-direction:column; gap:0.75rem; font-size:0.95rem; line-height:1.5;"></div>
       <div style="display:flex; justify-content:space-between; margin-top:1.5rem; flex-wrap:wrap; gap:0.5rem;">
-        <button class="btn btn-danger" id="btn-detail-delete">Excluir</button>
+        <button class="btn btn-danger" id="btn-detail-delete">Excluir Compromisso</button>
         <div style="display:flex; gap:0.5rem;">
           <button class="btn btn-secondary" id="btn-detail-edit">Editar</button>
           <button class="btn btn-secondary" id="btn-detail-close">Fechar</button>
@@ -190,7 +242,7 @@
     </div>
   </div>
 
-  <!-- Diálogo Ativo de Alarme Tocando -->
+  <!-- Modal de Alarme Tocando -->
   <div class="modal-backdrop" id="modal-ringing" style="z-index:9999;">
     <div class="modal-box" style="text-align:center; border: 2px solid var(--danger);">
       <h1 style="color:var(--danger); font-size: 2.5rem; margin-bottom: 0.5rem;">⏰</h1>
