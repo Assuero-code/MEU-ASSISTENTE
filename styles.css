@@ -30,6 +30,7 @@
   padding: 0;
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -37,10 +38,11 @@ body {
   color: var(--text-main);
   display: flex;
   height: 100vh;
+  width: 100vw;
   overflow: hidden;
 }
 
-/* Sidebar */
+/* Sidebar Desktop */
 aside.sidebar {
   width: var(--sidebar-w);
   background-color: var(--bg-secondary);
@@ -50,6 +52,7 @@ aside.sidebar {
   padding: 1.25rem;
   transition: all 0.3s ease;
   z-index: 100;
+  flex-shrink: 0;
 }
 
 .brand {
@@ -84,6 +87,7 @@ nav.nav-menu {
   font-size: 0.95rem;
   font-weight: 500;
   transition: 0.2s;
+  user-select: none;
 }
 
 .nav-item:hover, .nav-item.active {
@@ -102,6 +106,7 @@ main.main-viewport {
   flex-direction: column;
   overflow: hidden;
   position: relative;
+  height: 100%;
 }
 
 /* Topbar */
@@ -113,6 +118,7 @@ header.topbar {
   justify-content: space-between;
   padding: 0 1.5rem;
   background-color: var(--bg-secondary);
+  flex-shrink: 0;
 }
 
 .view-section {
@@ -120,6 +126,7 @@ header.topbar {
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem;
+  height: calc(100% - 60px);
 }
 
 .view-section.active {
@@ -152,6 +159,7 @@ header.topbar {
   border-radius: var(--radius);
   line-height: 1.5;
   font-size: 0.95rem;
+  word-break: break-word;
 }
 
 .msg-user {
@@ -176,6 +184,7 @@ header.topbar {
   border-radius: var(--radius);
   border: 1px solid var(--border);
   align-items: center;
+  flex-shrink: 0;
 }
 
 .chat-controls input {
@@ -199,6 +208,7 @@ header.topbar {
   align-items: center;
   gap: 0.5rem;
   transition: 0.2s;
+  user-select: none;
 }
 
 .btn:hover { background: var(--accent-hover); }
@@ -211,6 +221,8 @@ header.topbar {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .calendar-grid {
@@ -311,18 +323,19 @@ header.topbar {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0, 0, 0, 0.75);
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 10000;
+  padding: 1rem;
 }
 
 .modal-backdrop.show { display: flex; }
 
 .modal-box {
   background: var(--bg-secondary);
-  width: 90%;
+  width: 100%;
   max-width: 520px;
   padding: 1.5rem;
   border-radius: var(--radius);
@@ -357,7 +370,6 @@ header.topbar {
   border-color: var(--accent);
 }
 
-/* Gravação de Voz */
 .recording-pulse {
   animation: pulse 1s infinite alternate;
   color: var(--danger) !important;
@@ -368,34 +380,97 @@ header.topbar {
   100% { transform: scale(1.15); }
 }
 
-/* Responsividade Mobile */
+/* Responsividade Mobile - BARRA FIXA 100% OPERACIONAL */
 @media (max-width: 768px) {
-  body { flex-direction: column-reverse; }
+  body {
+    flex-direction: column;
+  }
+
+  /* Sidebar vira Bottom Bar fixa */
   aside.sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     width: 100%;
-    height: 60px;
+    height: 64px;
     flex-direction: row;
     padding: 0;
+    margin: 0;
     border-right: none;
     border-top: 1px solid var(--border);
+    background-color: var(--bg-secondary);
+    z-index: 9999;
   }
-  .brand { display: none; }
+
+  .brand {
+    display: none;
+  }
+
   nav.nav-menu {
     flex-direction: row;
     justify-content: space-around;
+    align-items: center;
     width: 100%;
+    height: 100%;
+    gap: 0;
+    overflow-x: auto;
   }
+
   .nav-item {
+    flex: 1;
+    height: 100%;
+    display: flex;
     flex-direction: column;
-    padding: 0.35rem;
-    font-size: 0.68rem;
-    border-left: none !important;
-    gap: 0.2rem;
-  }
-  .topbar { display: none; }
-  .cal-cell {
-    min-height: 75px;
-    height: 75px;
+    justify-content: center;
+    align-items: center;
     padding: 0.2rem;
+    font-size: 0.65rem;
+    border-radius: 0;
+    border-left: none !important;
+    gap: 2px;
+    white-space: nowrap;
+  }
+
+  .nav-item.active {
+    background-color: var(--bg-tertiary);
+    border-top: 3px solid var(--accent);
+  }
+
+  /* Viewport com espaço reservado para a barra inferior */
+  main.main-viewport {
+    height: calc(100vh - 64px);
+    margin-bottom: 64px;
+  }
+
+  header.topbar {
+    height: 50px;
+    padding: 0 1rem;
+  }
+
+  header.topbar h2 {
+    font-size: 1rem;
+  }
+
+  .view-section {
+    padding: 1rem;
+    height: calc(100% - 50px);
+    padding-bottom: 2rem;
+  }
+
+  .cal-cell {
+    min-height: 70px;
+    height: 70px;
+    padding: 0.2rem;
+  }
+
+  .cal-date-number {
+    font-size: 0.75rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .event-pill {
+    font-size: 0.6rem;
+    padding: 1px 2px;
   }
 }
