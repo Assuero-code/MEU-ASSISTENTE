@@ -1,6 +1,6 @@
-// nlp.js - Processador de Linguagem Natural com Suporte a IA Remota (Groq / OpenAI / Claude)
+// nlp.js - Processador Semântico com Conexão Groq / OpenAI Atualizada
 const NLPParser = {
-  // Parser determinístico local (usado para comandos rápidos de agenda e fallback offline)
+  // Parser determinístico local (para comandos estruturados de agenda e fallback offline)
   parseDateTime(text, baseDate = new Date()) {
     const lower = text.toLowerCase();
     const target = new Date(baseDate.getTime());
@@ -72,7 +72,6 @@ const NLPParser = {
     };
   },
 
-  // Intérprete determinístico inicial
   interpretLocal(input, existingEvents = []) {
     const text = input.trim();
     const lower = text.toLowerCase();
@@ -134,6 +133,7 @@ const NLPParser = {
       lower.startsWith('agende') || 
       lower.startsWith('marcar') || 
       lower.includes('reunião') || 
+      lower.includes('reuniao') || 
       lower.includes('consulta') || 
       lower.includes('compromisso')
     ) {
@@ -177,38 +177,52 @@ const NLPParser = {
       };
     }
 
-    return null; // Não é comando imediato de sistema
+    return null;
   },
 
-  // Chamada à API de IA Remota (Groq / OpenAI / etc.)
+  // Chamada à API da Groq / OpenAI com tratamento de erro detalhado
   async askAI(prompt, conversationHistory = []) {
     const settings = StorageDB.getSettings();
-    const endpoint = settings.aiEndpoint?.trim();
-    const apiKey = settings.aiApiKey?.trim();
+    let endpoint = (settings.aiEndpoint || '').trim();
+    let apiKey = (settings.aiApiKey || '').trim();
+
+    // Se o usuário não preencheu o endpoint mas forneceu uma chave da Groq (gsk_...)
+    if (!endpoint && apiKey.startsWith('gsk_')) {
+      endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+    }
 
     if (!endpoint || !apiKey) {
       return {
         success: false,
-        message: 'A Inteligência Artificial remota não está configurada. Vá até "⚙️ Ajustes" e informe o Endpoint e a Chave de API.'
+        message: 'Configuração necessária: Vá em "⚙️ Ajustes" e informe o Endpoint da API e a Chave da Groq.'
       };
     }
 
-    // Detecta o modelo baseado no endpoint
-    let modelName = 'llama-3.3-70b-versatile'; // Padrão de alta velocidade da Groq
+    // Modelo oficial atualizado da Groq (compatível e de alta velocidade)
+    let modelName = 'llama-3.3-70b-versatile';
     if (endpoint.includes('openai.com')) {
       modelName = 'gpt-3.5-turbo';
     }
 
-    const systemPrompt = `Você é o "Meu Assistente", um assistente pessoal digital prestativo, educado, ágil e inteligente. 
-Responda em português brasileiro com clareza, empatia e objetividade. 
-Ajude o usuário com explicações, tarefas, organização pessoal, ideias e dúvidas do dia a dia.
-A data de hoje é: ${new Date().toLocaleDateString('pt-BR')} (${new Date().toLocaleTimeString('pt-BR')}).`;
+    const systemPrompt = `Você é o "Meu Assistente", um assistente pessoal inteligente, prestativo e simpático. 
+Responda sempre em português do Brasil com respostas bem formatadas, claras e objetivas. 
+Data atual de referência: ${new Date().toLocaleDateString('pt-BR')}.`;
 
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...conversationHistory.slice(-6), // Mantém histórico recente
-      { role: 'user', content: prompt }
-    ];
+    // Filtra histórico para evitar exceder limite de tokens
+    const recentHistory = conversationHistory
+      .filter(m => m.role === 'user' || m.role === 'assistant')
+      .slice(-6);
+
+    const payload = {
+      model: modelName,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...recentHistory,
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.6,
+      max_tokens: 800
+    };
 
     try {
       const response = await fetch(endpoint, {
@@ -217,31 +231,48 @@ A data de hoje é: ${new Date().toLocaleDateString('pt-BR')} (${new Date().toLoc
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`
         },
-        body: JSON.stringify({
-          model: modelName,
-          messages: messages,
-          temperature: 0.7,
-          max_tokens: 600
-        })
+        body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error?.message || `Erro HTTP ${response.status}`);
+        const errorBody = await response.json().catch(() => ({}));
+        const errorDetail = errorBody.error?.message || `Código de erro HTTP ${response.status}`;
+        
+        // Se o erro for de modelo não encontrado ou cota esgotada, tenta modelo leve alternativo
+        if (response.status === 404 || errorDetail.includes('model')) {
+          payload.model = 'llama-3.1-8b-instant';
+          const retryRes = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(payload)
+          });
+          if (retryRes.ok) {
+            const retryData = await retryRes.json();
+            return {
+              success: true,
+              message: retryData.choices[0].message.content.trim()
+            };
+          }
+        }
+
+        throw new Error(errorDetail);
       }
 
       const data = await response.json();
-      const reply = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : 'Não foi possível obter resposta do assistente.';
+      const reply = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : 'Não foi possível gerar uma resposta no momento.';
 
       return {
         success: true,
         message: reply.trim()
       };
     } catch (err) {
-      console.error('Erro na chamada da IA:', err);
+      console.error('Erro na chamada da Groq API:', err);
       return {
         success: false,
-        message: `Falha ao conectar com a IA: ${err.message}. Verifique a chave de API e a conexão em Ajustes.`
+        message: `Erro na API da Groq: ${err.message}. Verifique em "⚙️ Ajustes" se a chave começa com "gsk_" e se o endpoint está correto.`
       };
     }
   }
