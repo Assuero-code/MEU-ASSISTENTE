@@ -1,0 +1,22 @@
+{
+  "name": "Meu Assistente Pessoal",
+  "short_name": "Assistente",
+  "description": "Assistente Pessoal Digital Inteligente com Calendário, Alarmes e Lembretes",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' fill='%232563eb'><rect width='512' height='512' rx='100' fill='%230f172a'/><path d='M256 120a60 60 0 100 120 60 60 0 000-120zm-90 180c-33 0-60 27-60 60v16h300v-16c0-33-27-60-60-60H166z' fill='%2338bdf8'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' fill='%232563eb'><rect width='512' height='512' rx='100' fill='%230f172a'/><path d='M256 120a60 60 0 100 120 60 60 0 000-120zm-90 180c-33 0-60 27-60 60v16h300v-16c0-33-27-60-60-60H166z' fill='%2338bdf8'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
