@@ -199,9 +199,9 @@ const NLPParser = {
     }
 
     // Modelo oficial atualizado da Groq (compatível e de alta velocidade)
-    let modelName = 'llama-3.1-8b-instant';
-    if (endpoint.includes('openai.com')) {
-      modelName = 'gpt-3.5-turbo';
+    let modelName = 'openai/gpt-oss-20b';
+    if (endpoint.includes('api.openai.com')) {
+      modelName = 'gpt-4o-mini';
     }
 
     const systemPrompt = `Você é o "Meu Assistente", um assistente pessoal inteligente, prestativo e simpático. 
