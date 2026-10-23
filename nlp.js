@@ -1,4 +1,4 @@
-// nlp.js - Processador Semântico com Conexão Groq / OpenAI Atualizada
+// nlp.js - Processador Semântico com Conexão Groq / OpenAI Atualizada e Ações Automáticas
 const NLPParser = {
   // Parser determinístico local (para comandos estruturados de agenda e fallback offline)
   parseDateTime(text, baseDate = new Date()) {
@@ -121,17 +121,39 @@ const NLPParser = {
       };
     }
 
-    // 5. Tarefa
-    if (lower.startsWith('tarefa:') || lower.startsWith('lembre-me de') || lower.startsWith('criar tarefa')) {
-      const title = text.replace(/^(tarefa:|lembre-me de|criar tarefa)/i, '').trim();
-      return { intent: 'CREATE_TASK', title: title || 'Nova Tarefa', raw: text };
+    // 5. Tarefas (Reconhece variações: "coloque na tarefa", "adicionar tarefa", "tarefa: ...")
+    if (
+      lower.startsWith('tarefa:') || 
+      lower.startsWith('lembre-me de') || 
+      lower.startsWith('lembre me de') || 
+      lower.startsWith('criar tarefa') ||
+      lower.includes('coloque na tarefa') ||
+      lower.includes('colocar na tarefa') ||
+      lower.includes('adicionar tarefa') ||
+      lower.includes('adicione na tarefa') ||
+      lower.includes('adicione em tarefas') ||
+      lower.includes('anotar tarefa')
+    ) {
+      let cleanTask = text
+        .replace(/(coloque na tarefa|colocar na tarefa|adicione na tarefa|adicione em tarefas|adicionar tarefa|criar tarefa|anotar tarefa|tarefa:|lembre-me de|lembre me de)\s*/gi, '')
+        .trim();
+      return { intent: 'CREATE_TASK', title: cleanTask || 'Nova Tarefa', raw: text };
     }
 
-    // 6. Evento / Compromisso
+    // 6. Evento / Compromisso / Agenda / Calendário
     if (
       lower.startsWith('marque') || 
       lower.startsWith('agende') || 
       lower.startsWith('marcar') || 
+      lower.startsWith('agendar') ||
+      lower.includes('coloque na agenda') ||
+      lower.includes('colocar na agenda') ||
+      lower.includes('adicione na agenda') ||
+      lower.includes('adicionar na agenda') ||
+      lower.includes('coloque no calendário') ||
+      lower.includes('colocar no calendario') ||
+      lower.includes('adicionar no calendário') ||
+      lower.includes('adicione no calendário') ||
       lower.includes('reunião') || 
       lower.includes('reuniao') || 
       lower.includes('consulta') || 
@@ -139,9 +161,10 @@ const NLPParser = {
     ) {
       const parsed = this.parseDateTime(lower);
       let cleanTitle = text
-        .replace(/(marque|agende|marcar|agendar|uma|um|novo|nova|compromisso|reunião|reuniao|consulta)\s*/gi, '')
+        .replace(/(coloque na agenda|colocar na agenda|adicione na agenda|adicionar na agenda|coloque no calendário|colocar no calendario|adicionar no calendário|adicione no calendário|marque|agende|marcar|agendar|uma|um|novo|nova|compromisso|reunião|reuniao|consulta)\s*/gi, '')
         .replace(/(amanhã|amanha|hoje|segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo)/gi, '')
         .replace(/às\s+\d{1,2}(?::\d{2}|h)?/gi, '')
+        .replace(/as\s+\d{1,2}(?::\d{2}|h)?/gi, '')
         .replace(/no dia\s+\d{1,2}(?:\/\d{1,2})?/gi, '')
         .trim();
 
@@ -180,13 +203,12 @@ const NLPParser = {
     return null;
   },
 
-  // Chamada à API da Groq / OpenAI com tratamento de erro detalhado
+  // Chamada à API da Groq / OpenAI com instrução de automação acoplada
   async askAI(prompt, conversationHistory = []) {
     const settings = StorageDB.getSettings();
     let endpoint = (settings.aiEndpoint || '').trim();
     let apiKey = (settings.aiApiKey || '').trim();
 
-    // Se o usuário não preencheu o endpoint mas forneceu uma chave da Groq (gsk_...)
     if (!endpoint && apiKey.startsWith('gsk_')) {
       endpoint = 'https://api.groq.com/openai/v1/chat/completions';
     }
@@ -198,17 +220,27 @@ const NLPParser = {
       };
     }
 
-    // Modelo oficial atualizado da Groq (compatível e de alta velocidade)
     let modelName = 'openai/gpt-oss-20b';
     if (endpoint.includes('api.openai.com')) {
       modelName = 'gpt-4o-mini';
     }
 
-    const systemPrompt = `Você é o "Meu Assistente", um assistente pessoal inteligente, prestativo e simpático. 
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const systemPrompt = `Você é o "Meu Assistente", um assistente pessoal inteligente, prestativo e simpático.
 Responda sempre em português do Brasil com respostas bem formatadas, claras e objetivas. 
-Data atual de referência: ${new Date().toLocaleDateString('pt-BR')}.`;
+Data de hoje: ${new Date().toLocaleDateString('pt-BR')} (${todayIso}).
 
-    // Filtra histórico para evitar exceder limite de tokens
+INSTRUÇÃO CRÍTICA DO SISTEMA:
+Sempre que o usuário pedir para criar, agendar ou registrar uma tarefa, reunião, evento ou compromisso, além da sua resposta cordial, você DEVE OBRIGATORIAMENTE anexar ao final da sua resposta uma tag oculta com os detalhes em JSON:
+
+- Para Agendamentos / Calendário / Agenda:
+[ACAO_EVENTO:{"title":"Título do evento","date":"AAAA-MM-DD","time":"HH:MM"}]
+
+- Para Tarefas / To-Do:
+[ACAO_TAREFA:{"title":"Título da tarefa","priority":"media"}]
+
+Não deixe de emitir essa tag caso o usuário peça para colocar na agenda ou nas tarefas!`;
+
     const recentHistory = conversationHistory
       .filter(m => m.role === 'user' || m.role === 'assistant')
       .slice(-6);
@@ -220,7 +252,7 @@ Data atual de referência: ${new Date().toLocaleDateString('pt-BR')}.`;
         ...recentHistory,
         { role: 'user', content: prompt }
       ],
-      temperature: 0.6,
+      temperature: 0.5,
       max_tokens: 800
     };
 
@@ -238,7 +270,6 @@ Data atual de referência: ${new Date().toLocaleDateString('pt-BR')}.`;
         const errorBody = await response.json().catch(() => ({}));
         const errorDetail = errorBody.error?.message || `Código de erro HTTP ${response.status}`;
         
-        // Se o erro for de modelo não encontrado ou cota esgotada, tenta modelo leve alternativo
         if (response.status === 404 || errorDetail.includes('model')) {
           payload.model = 'openai/gpt-oss-20b';
           const retryRes = await fetch(endpoint, {
