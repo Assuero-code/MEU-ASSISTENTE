@@ -240,7 +240,7 @@ Data atual de referência: ${new Date().toLocaleDateString('pt-BR')}.`;
         
         // Se o erro for de modelo não encontrado ou cota esgotada, tenta modelo leve alternativo
         if (response.status === 404 || errorDetail.includes('model')) {
-          payload.model = 'llama-3.1-8b-instant';
+          payload.model = 'openai/gpt-oss-20b';
           const retryRes = await fetch(endpoint, {
             method: 'POST',
             headers: {
