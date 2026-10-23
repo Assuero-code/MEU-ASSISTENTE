@@ -38,6 +38,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnDetailDelete = document.getElementById('btn-detail-delete');
   let selectedEvent = null;
 
+  // Atualiza todas as abas abertas em segundo plano para refletir adições via chat
+  function refreshAllViews() {
+    renderCalendar();
+    renderAgenda();
+    renderMeuDia();
+    renderTasks();
+    renderAlarms();
+  }
+
   // Formatação segura de data sem desvio UTC ("YYYY-MM-DD")
   function formatLocalDate(year, monthIndex, day) {
     const y = year;
@@ -137,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      // Método moderno com Promise + fallback clássico para Safari e WebView móvel
       let permissionResult;
       const promise = Notification.requestPermission((p) => {
         permissionResult = p;
@@ -165,7 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Botão na Topbar (se clicável) e na tela de Ajustes
   if (pushBadge) {
     pushBadge.style.cursor = 'pointer';
     pushBadge.addEventListener('click', requestNotificationPermissionUniversal);
@@ -249,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const events = StorageDB.getEvents();
     const tasks = StorageDB.getTasks();
 
-    // Interpreta comandos nativos do sistema primeiro
+    // 1. Interpreta comandos nativos do sistema primeiro
     const action = NLPParser.interpretLocal(text, events);
 
     if (action) {
@@ -276,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
             status: 'confirmed'
           });
 
+          refreshAllViews();
           AudioEngine.beepSuccess();
           const resp = `Agendado: "${newEvt.title}" para ${action.startDate.toLocaleDateString('pt-BR')} às ${startH} (Lembrete: ${action.reminderMinutes} min antes).`;
           appendMessage('assistant', resp);
@@ -289,6 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
             status: 'pending',
             priority: 'media'
           });
+          refreshAllViews();
           AudioEngine.beepSuccess();
           const resp = `Tarefa anotada: "${newTask.title}".`;
           appendMessage('assistant', resp);
@@ -303,6 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
             active: true,
             days: [0, 1, 2, 3, 4, 5, 6]
           });
+          refreshAllViews();
           AudioEngine.beepSuccess();
           const resp = `Alarme configurado para às ${action.time} (${action.title}).`;
           appendMessage('assistant', resp);
@@ -337,6 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
           if (ev) {
             ev.status = 'cancelled';
             StorageDB.saveEvent(ev);
+            refreshAllViews();
             const resp = `O compromisso "${ev.title}" foi cancelado com sucesso.`;
             appendMessage('assistant', resp);
             speak(resp);
@@ -348,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    // Se não for comando de sistema, responde via IA
+    // 2. Se não for comando local imediato, consulta a IA e processa ações vindas dela
     appendMessage('assistant', 'Pensando...');
     const thinkingMsg = chatHistory.lastElementChild;
 
@@ -357,10 +368,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (thinkingMsg) thinkingMsg.remove();
 
-    appendMessage('assistant', aiResult.message);
+    let displayMessage = aiResult.message;
+
+    // INTERCEPTAÇÃO DE AÇÕES DA IA (Se a IA decidiu criar uma tarefa ou evento)
+    if (aiResult.success && displayMessage) {
+      // 1. Ação de Tarefa gerada pela IA
+      const matchTarefa = displayMessage.match(/\[ACAO_TAREFA:\s*({.*?})\]/i);
+      if (matchTarefa) {
+        try {
+          const dadosT = JSON.parse(matchTarefa[1]);
+          StorageDB.saveTask({
+            title: dadosT.title || 'Nova Tarefa',
+            priority: dadosT.priority || 'media',
+            status: 'pending'
+          });
+          refreshAllViews();
+          AudioEngine.beepSuccess();
+          displayMessage = displayMessage.replace(matchTarefa[0], '').trim();
+        } catch (err) {
+          console.error('Erro ao ler tag da tarefa da IA:', err);
+        }
+      }
+
+      // 2. Ação de Evento / Calendário gerada pela IA
+      const matchEvento = displayMessage.match(/\[ACAO_EVENTO:\s*({.*?})\]/i);
+      if (matchEvento) {
+        try {
+          const dadosE = JSON.parse(matchEvento[1]);
+          const now = new Date();
+          const defaultDate = formatLocalDate(now.getFullYear(), now.getMonth(), now.getDate());
+          const eDate = dadosE.date || defaultDate;
+          const eTime = dadosE.time || '09:00';
+
+          StorageDB.saveEvent({
+            title: dadosE.title || 'Compromisso Agendado',
+            start: `${eDate}T${eTime}:00`,
+            end: `${eDate}T${eTime}:00`,
+            reminderMinutes: 15,
+            status: 'confirmed',
+            description: dadosE.description || 'Criado pelo assistente via chat'
+          });
+          refreshAllViews();
+          AudioEngine.beepSuccess();
+          displayMessage = displayMessage.replace(matchEvento[0], '').trim();
+        } catch (err) {
+          console.error('Erro ao ler tag do evento da IA:', err);
+        }
+      }
+    }
+
+    appendMessage('assistant', displayMessage);
     if (aiResult.success) {
-      aiConversationHistory.push({ role: 'assistant', content: aiResult.message });
-      speak(aiResult.message);
+      aiConversationHistory.push({ role: 'assistant', content: displayMessage });
+      speak(displayMessage);
     }
   }
 
@@ -401,9 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (confirm(`Deseja realmente excluir o compromisso "${selectedEvent.title}"?`)) {
       StorageDB.deleteEvent(selectedEvent.id);
       modalDetail.classList.remove('show');
-      renderCalendar();
-      renderAgenda();
-      renderMeuDia();
+      refreshAllViews();
     }
   });
 
@@ -550,6 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- AGENDA COMPLETA ---
   function renderAgenda() {
     const list = document.getElementById('agenda-list');
+    if (!list) return;
     const searchVal = document.getElementById('agenda-search').value.toLowerCase();
     const filterStatus = document.getElementById('agenda-filter-status').value;
     
@@ -597,10 +656,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- MEU DIA ---
   function renderMeuDia() {
+    const elData = document.getElementById('meu-dia-data');
+    if (!elData) return;
     const now = new Date();
     const todayStr = formatLocalDate(now.getFullYear(), now.getMonth(), now.getDate());
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById('meu-dia-data').textContent = now.toLocaleDateString('pt-BR', options);
+    elData.textContent = now.toLocaleDateString('pt-BR', options);
 
     const hour = now.getHours();
     const saudacao = hour < 12 ? 'Bom dia!' : hour < 18 ? 'Boa tarde!' : 'Boa noite!';
@@ -655,14 +716,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (t) {
       t.status = 'completed';
       StorageDB.saveTask(t);
-      renderMeuDia();
-      renderTasks();
+      refreshAllViews();
     }
   };
 
   // --- TAREFAS ---
   function renderTasks() {
     const list = document.getElementById('tasks-list');
+    if (!list) return;
     const tasks = StorageDB.getTasks();
     list.innerHTML = tasks.length ? '' : '<p style="color:var(--text-muted)">Nenhuma tarefa cadastrada.</p>';
 
@@ -685,12 +746,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.removeTask = (id) => {
     StorageDB.deleteTask(id);
-    renderTasks();
+    refreshAllViews();
   };
 
   // --- ALARMES ---
   function renderAlarms() {
     const list = document.getElementById('alarms-list');
+    if (!list) return;
     const alarms = StorageDB.getAlarms();
     list.innerHTML = alarms.length ? '' : '<p style="color:var(--text-muted)">Nenhum alarme configurado.</p>';
 
@@ -953,19 +1015,17 @@ document.addEventListener('DOMContentLoaded', () => {
         status,
         description
       });
-      renderCalendar();
-      renderAgenda();
-      renderMeuDia();
+      refreshAllViews();
     } else if (currentModalAction === 'SAVE_TASK') {
       const title = document.getElementById('form-task-title').value;
       const priority = document.getElementById('form-task-prio').value;
       StorageDB.saveTask({ title, priority, status: 'pending' });
-      renderTasks();
+      refreshAllViews();
     } else if (currentModalAction === 'SAVE_ALARM') {
       const time = document.getElementById('form-alm-time').value;
       const title = document.getElementById('form-alm-title').value;
       StorageDB.saveAlarm({ time, title, active: true, days: [0, 1, 2, 3, 4, 5, 6] });
-      renderAlarms();
+      refreshAllViews();
     }
     modalForm.classList.remove('show');
   });
