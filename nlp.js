@@ -199,7 +199,7 @@ const NLPParser = {
     }
 
     // Modelo oficial atualizado da Groq (compatível e de alta velocidade)
-    let modelName = 'mixtral-8x7b-32768';
+    let modelName = 'llama-3.1-8b-instant';
     if (endpoint.includes('openai.com')) {
       modelName = 'gpt-3.5-turbo';
     }
